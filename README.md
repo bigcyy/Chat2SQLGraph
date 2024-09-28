@@ -2,13 +2,7 @@
 
 **Chat2SQLGraph** 是一个基于对话的智能数据分析和可视化工具。通过自然语言对话，用户可以生成 SQL 查询、执行数据检索，并自动将查询结果转化为可视化图表。该项目利用大语言模型（LLM）实现自然语言到 SQL 的翻译，并将 SQL 查询结果直观地展现在图表中，极大地方便了用户的数据分析过程。
 
-即将推出全新前端代码和在线体验，下面是 demo 版展示视频。
-
-<video width="100%" controls>
-  <source src="doc/demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
-
+即将推出全新前端代码和在线体验。
 
 
 ### 主要功能：
