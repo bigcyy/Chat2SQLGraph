@@ -1,0 +1,102 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pip-wheel-metadata/
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtual environments
+# Common virtual environment folders
+.venv/
+.venv.bak/
+ENV/
+env/
+env.bak/
+venv/
+venv.bak/
+
+# Flask specific
+instance/
+.webassets-cache
+
+# Pytest
+.pytest_cache/
+.coverage
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environments
+.env
+.env.*
+*.env
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Other IDEs and editors
+*.swp
+*~
+
+# Logs and databases
+*.log
+*.sqlite3
+
+# Test output
+htmlcov/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Docker
+*.dockerignore
+docker-compose.yml
+Dockerfile
+__pycache__/
+
+# pylint
+pylint-report.txt
+pylint-global.rc
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.cache
+.nox/

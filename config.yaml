@@ -1,0 +1,7 @@
+# 数据库链接信息
+DB_NAME: chat2sqlgraph
+DB_HOST: localhost
+DB_PORT: 5432
+DB_USER: postgres
+DB_PASSWORD: postgres
+DB_ENGINE: django.db.backends.postgresql_psycopg2
