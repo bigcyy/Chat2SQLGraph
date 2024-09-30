@@ -104,6 +104,6 @@ class GenerateSqlStep(BaseStep):
 
     def get_step_dict_for_saving(self) -> dict:
         return {
-            "sql": self.context["sql"],
-            "think": self.context["think"]
+            "sql": self.context.get("sql"),
+            "think": self.context.get("think")
         }

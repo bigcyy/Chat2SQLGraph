@@ -101,6 +101,6 @@ class TableSelectStep(BaseStep):
 
     def get_step_dict_for_saving(self) -> dict:
         return {
-            "reason":self.context["reason"],
-            "table_ids":self.context["table_ids"]
+            "reason":self.context.get("reason"),
+            "table_ids":self.context.get("table_ids")
         }
