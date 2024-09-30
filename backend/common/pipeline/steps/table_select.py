@@ -2,7 +2,8 @@ from common.pipeline.base_step import BaseStep
 from common.pipeline.pipeline_manager import PipelineManager
 from common.pipeline.response_util import to_stream_chunk_response, Status
 import uuid
-from setting.models import TableInfo, Datasource
+from setting.models.table_info import TableInfo
+from setting.models.datasource import Datasource
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from typing import List

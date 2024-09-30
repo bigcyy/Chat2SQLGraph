@@ -1,10 +1,10 @@
 from rest_framework import serializers
 from common.response.field_response import ErrMessage
 from common.exceptions.exception import ExceptionCodeConstants
-from setting.models import Datasource
+from setting.models.datasource import Datasource
 from .models import ChatInfo
 from django.http import StreamingHttpResponse
-from setting.models import Model
+from setting.models.model import Model
 from common.providers.model_provider_constants import ModelProviderConstants
 from common.pipeline.pipeline_manager import PipelineManager
 from common.pipeline.steps.table_select import TableSelectStep
@@ -185,7 +185,7 @@ class ChatMessageSerializer(serializers.Serializer):
                 "datasource_id":chat_info.datasource_id.id,
                 "user_id":chat_info.user_id.id,
                 "user_demand":chat_info.user_demand,
-                "chat_content":chat_info.chat_content,
+                "chat_content":json.loads(chat_info.chat_content),
                 "created_at":chat_info.created_at,
                 "updated_at":chat_info.updated_at,
 

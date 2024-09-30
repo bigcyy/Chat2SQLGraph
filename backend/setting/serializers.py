@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from .models import Datasource,Model,TableInfo
+from .models.datasource import Datasource
+from .models.model import Model
+from .models.table_info import TableInfo
 from user.models import User
 from common.response.field_response import ErrMessage
 from common.exceptions.exception import ExceptionCodeConstants
@@ -8,9 +10,6 @@ from common.providers.model_provider_constants import ModelProviderConstants
 from langchain.chat_models.base import BaseChatModel
 import pymysql
 from common.utils import rsa_util
-import asyncio
-from asgiref.sync import sync_to_async
-import time
 import threading
 
 class DatasourceSerializer(serializers.ModelSerializer):
@@ -68,12 +67,17 @@ class DatasourceSerializer(serializers.ModelSerializer):
             m.save()
             return m.id
     
-    class DeleteDatasource(serializers.ModelSerializer):
+    class DeleteDatasource(serializers.Serializer):
         datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
         user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("创建人"))  
-        class Meta:
-            model = Datasource
-            fields = ['datasource_id','user_id']
+        
+        def is_valid(self, *, raise_exception=False):
+            super().is_valid(raise_exception=True)
+            # 数据源是否存在
+            datasource = Datasource.objects.filter(id=self.data.get("datasource_id"),created_by=self.data.get("user_id")).first()
+            if datasource is None:
+                raise ExceptionCodeConstants.DATASOURCE_NOT_EXIST.value.to_app_api_exception()
+
         def delete_datasource(self):
             self.is_valid(raise_exception=True)
             Datasource.objects.filter(id=self.data.get("datasource_id"),created_by=self.data.get("user_id")).delete()
@@ -360,7 +364,7 @@ class ModelSerializer(serializers.ModelSerializer):
                 raise ExceptionCodeConstants.MODEL_IS_NOT_VALID.value.to_app_api_exception()
             
             # 查看别名是否已经在数据库中存在
-            model = Model.objects.filter(name=self.data.get("name")).first()
+            model = Model.objects.filter(name=self.data.get("name"),created_by=self.data.get("user_id")).first()
             if model is not None:
                 raise ExceptionCodeConstants.MODEL_NICKNAME_IS_EXIST.value.to_app_api_exception()
 
