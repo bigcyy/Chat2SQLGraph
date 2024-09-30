@@ -7,7 +7,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from common.response.field_response import ErrMessage
 from rest_framework import serializers
 from common.exceptions.exception import ExceptionCodeConstants
-from setting.models import Datasource, TableInfo
+from setting.models.datasource import Datasource
+from setting.models.table_info import TableInfo
 
 import json
 class GenerateSqlStep(BaseStep):

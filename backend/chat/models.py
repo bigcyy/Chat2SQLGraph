@@ -1,5 +1,5 @@
 from django.db import models
-from setting.models import Datasource
+from setting.models.datasource import Datasource
 import uuid
 from user.models import User
 

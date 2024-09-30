@@ -4,7 +4,7 @@ from common.pipeline.response_util import to_stream_chunk_response, Status
 import uuid
 import pymysql
 from common.exceptions.exception import ExceptionCodeConstants
-from setting.models import Datasource
+from setting.models.datasource import Datasource
 from rest_framework import serializers
 from common.response.field_response import ErrMessage
 import json

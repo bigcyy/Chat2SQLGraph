@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from user.models import User
-from user.utils import password_encrypt
+from common.utils import rsa_util
 from django.db.models import Q, QuerySet
 from common.exceptions.exception import ExceptionCodeConstants
 from common.response.field_response import ErrMessage
@@ -14,9 +14,6 @@ class LoginSerializer(serializers.Serializer):
 
     password = serializers.CharField(required=True, error_messages=ErrMessage.char("密码"))
 
-    class Meta:
-        model = User
-        fields = '__all__'
     
     def is_valid(self, *, raise_exception=False):
         """
@@ -26,10 +23,9 @@ class LoginSerializer(serializers.Serializer):
         """
         super().is_valid(raise_exception=True)
         username = self.data.get("username")
-        password = password_encrypt(self.data.get("password"))
-        user = QuerySet(User).filter(Q(username=username,
-                                       password=password)).first()
-        if user is None:
+        password = self.data.get("password")
+        user = User.objects.filter(username=username).first()
+        if user is None or not rsa_util.decrypt(user.password) == password:
             raise ExceptionCodeConstants.INCORRECT_USERNAME_AND_PASSWORD.value.to_app_api_exception()
         if not user.is_active:
             raise ExceptionCodeConstants.USER_IS_NOT_ACTIVE.value.to_app_api_exception()

@@ -1,7 +1,7 @@
 import rsa
 from django.core import cache
 import threading
-from setting.models import SystemSetting, SettingType
+from setting.models.system import SystemSetting, SettingType
 import base64
 
 lock = threading.Lock()
