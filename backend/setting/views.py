@@ -6,8 +6,7 @@ from common.providers.model_provider_constants import ModelProviderConstants
 from common.auth.authenticate import JWTAuthentication
 from common.utils.utils import query_params_to_single_dict
 from .serializers import RemoteTableInfoSerializer
-import asyncio
-import time
+from drf_yasg.utils import swagger_auto_schema
 # Create your views here.
 
 
@@ -15,12 +14,22 @@ class ModelView(APIView):
 
     authentication_classes = [JWTAuthentication]
 
+    @swagger_auto_schema(
+        method='POST',
+        operation_summary='添加模型',
+        operation_description='成功返回模型id\n'
+    )
     @action(methods=['POST'], detail=False)
     def post(self, request):
         serializer = ModelSerializer.Create(data={**request.data, 'user_id': request.user.id})
         id = serializer.save_model()
         return result.success(id)
 
+    @swagger_auto_schema(
+        method='GET',
+        operation_summary='获取保存的模型列表',
+        operation_description='成功返回保存的模型列表\n'
+    )
     @action(methods=['GET'], detail=False)
     def get(self, request):
         user_id = request.user.id
@@ -28,6 +37,11 @@ class ModelView(APIView):
                 data={**query_params_to_single_dict(request.query_params),'user_id': user_id}).list(with_valid=True)
         return result.success(models)
     
+    @swagger_auto_schema(
+        method='DELETE',
+        operation_summary='删除模型',
+        operation_description='成功返回ok\n'
+    )
     @action(methods=['DELETE'], detail=False)
     def delete(self, request):
         serializer = ModelSerializer.Delete(data={**request.data, 'user_id': request.user.id})
@@ -38,6 +52,11 @@ class ModelView(APIView):
 class ProviderView(APIView):
     authentication_classes = [JWTAuthentication]
 
+    @swagger_auto_schema(
+        method='GET',
+        operation_summary='获取模型提供者列表',
+        operation_description='成功返回模型提供者列表\n'
+    ) 
     @action(methods=['GET'], detail=False)
     def get(self, request):
         return result.success([
@@ -47,6 +66,11 @@ class ProviderView(APIView):
     class ModelListView(APIView):
         authentication_classes = [JWTAuthentication]
 
+        @swagger_auto_schema(
+            method='GET',
+            operation_summary='获取模型列表',
+            operation_description='成功返回模型列表\n'
+        )
         @action(methods=['GET'], detail=False)
         def get(self, request, provider:str):
             provider = ModelProviderConstants[provider]
@@ -58,18 +82,35 @@ class ProviderView(APIView):
 class DatasourceView(APIView):
     authentication_classes = [JWTAuthentication]
 
+    
+    @swagger_auto_schema(
+        method='POST',
+        operation_summary='添加数据源',
+        operation_description='成功返回数据源id\n'
+    )
     @action(methods=['POST'], detail=False)
     def post(self, request):
         serializer = DatasourceSerializer.Create(data={**request.data, 'user_id': request.user.id})
         id = serializer.save_datasource()
         return result.success(id)
     
+    
+    @swagger_auto_schema(
+        method='GET',
+        operation_summary='获取数据源列表',
+        operation_description='成功返回数据源列表\n'
+    )
     @action(methods=['GET'], detail=False)
     def get(self, request):
         serializer = DatasourceSerializer.Query(data={**query_params_to_single_dict(request.query_params),'user_id': request.user.id})
         datasources = serializer.query_datasource()
         return result.success(datasources)
 
+    @swagger_auto_schema(
+        method='DELETE',
+        operation_summary='删除数据源',
+        operation_description='成功返回ok\n'
+    )
     @action(methods=['DELETE'], detail=False)
     def delete(self, request):
         serializer = DatasourceSerializer.Delete(data={**request.data, 'user_id': request.user.id})
@@ -79,12 +120,22 @@ class DatasourceView(APIView):
     class TableInfoView(APIView):
         authentication_classes = [JWTAuthentication]
 
+        @swagger_auto_schema(
+            method='GET',
+            operation_summary='获取表信息列表',
+            operation_description='成功返回表信息列表\n'
+        )
         @action(methods=['GET'], detail=False)
         def get(self, request, datasource_id:int):
             serializer = TableInfoSerializer.Query(data={**request.data, 'datasource_id': datasource_id, 'user_id': request.user.id})
             table_infos = serializer.query_table_info()
             return result.success(table_infos)
 
+        @swagger_auto_schema(
+            method='POST',
+            operation_summary='添加表信息',
+            operation_description='成功返回ok\n'
+        )
         @action(methods=['POST'], detail=False)
         def post(self, request, datasource_id:int):
             
@@ -97,6 +148,11 @@ class DatasourceView(APIView):
             # end_time = time.time()
             return result.success("ok")
 
+        @swagger_auto_schema(
+            method='DELETE',
+            operation_summary='删除表信息',
+            operation_description='成功返回ok\n'
+        )
         @action(methods=['DELETE'], detail=False)
         def delete(self, request, datasource_id:int):
             serializer = TableInfoSerializer.Delete(data={**request.data, 'datasource_id': datasource_id, 'user_id': request.user.id})
@@ -106,6 +162,11 @@ class DatasourceView(APIView):
     class RemoteTableInfoView(APIView):
         authentication_classes = [JWTAuthentication]
 
+        @swagger_auto_schema(
+            method='GET',
+            operation_summary='获取远程表信息列表',
+            operation_description='成功返回远程表信息列表\n'
+        )
         @action(methods=['GET'], detail=False)
         def get(self, request, datasource_id:int):
             serializer = RemoteTableInfoSerializer.Query(data={**request.data, 'datasource_id': datasource_id, 'user_id': request.user.id})
