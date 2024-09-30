@@ -32,7 +32,17 @@ class ChatView(APIView):
             ans = serializer.list()
             return result.success(ans)
 
-
+    @swagger_auto_schema(
+        method='DELETE',
+        operation_summary='删除聊天',
+        operation_description='成功返回ok\n'
+    )
+    @action(methods=['DELETE'], detail=False)
+    def delete(self, request, datasource_id):
+        serializer = ChatSerializer.Delete(data={**request.data,"datasource_id":datasource_id,"user_id":request.user.id})
+        serializer.delete()
+        return result.success("ok")
+    
     class MessageView(APIView): 
 
         authentication_classes = [JWTAuthentication]

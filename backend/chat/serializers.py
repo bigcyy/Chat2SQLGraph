@@ -61,6 +61,27 @@ class ChatSerializer(serializers.Serializer):
             chat_info = ChatInfo.objects.create(datasource_id=datasource,user_id=user)
             return chat_info.id
 
+    class Delete(serializers.Serializer):
+        datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
+        chat_id = serializers.CharField(required=True,error_messages=ErrMessage.char("聊天 id"))
+        user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("用户 id"))
+
+        def is_valid(self, *, raise_exception=False):
+            super().is_valid(raise_exception=True)
+            # 检查数据源是否存在
+            datasource = Datasource.objects.filter(id=self.data.get("datasource_id"),created_by=self.data.get("user_id")).first()
+            if datasource is None:
+                raise ExceptionCodeConstants.DATASOURCE_NOT_EXIST.value.to_app_api_exception()
+            # 检查聊天是否存在
+            chat_info = ChatInfo.objects.filter(datasource_id=self.data.get("datasource_id"),user_id=self.data.get("user_id"),id=self.data.get("chat_id")).first()
+            if chat_info is None:
+                raise ExceptionCodeConstants.CHAT_NOT_EXIST.value.to_app_api_exception()
+
+        def delete(self):
+            self.is_valid(raise_exception=True)
+            ChatInfo.objects.filter(datasource_id=self.data.get("datasource_id"),user_id=self.data.get("user_id"),id=self.data.get("chat_id")).delete()
+            
+
 class ChatMessageSerializer(serializers.Serializer):
     class Create(serializers.Serializer):
         datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
@@ -85,15 +106,22 @@ class ChatMessageSerializer(serializers.Serializer):
                 raise ExceptionCodeConstants.CHAT_NOT_EXIST.value.to_app_api_exception()
         def chat(self):
             self.is_valid(raise_exception=True)
-            user_id = self.data.get("user_id")
+            
+            # 更新聊天信息的user_demand
+            ChatInfo.objects.filter(
+                datasource_id=self.data.get("datasource_id"),
+                user_id=self.data.get("user_id"),
+                id=self.data.get("chat_id")
+            ).update(user_demand=self.data.get("user_demand"))
+            
 
-            model_config = Model.objects.get(created_by=user_id,id=self.data.get("model_id"))
+            model_config = Model.objects.get(created_by=self.data.get("user_id"),id=self.data.get("model_id"))
             model_provider = ModelProviderConstants.openai_model_provider.value
             model = model_provider.get_model(model_config.model_name, rsa_util.decrypt(model_config.api_key), model_config.base_url)
             manager = PipelineManager.PipelineBuilder().set_agent(model).add_step(TableSelectStep()).add_step(GenerateSqlStep()).add_step(ExecuteSqlStep()).add_step(DataToChartStep()).build()
             context = {
                 'datasource_id': self.data.get("datasource_id"),
-                'user_id': user_id,
+                'user_id': self.data.get("user_id"),
                 'chat_id': self.data.get("chat_id"),
                 'user_demand': self.data.get("user_demand")
             }
