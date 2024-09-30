@@ -3,8 +3,14 @@ from rest_framework.decorators import action
 from .serializers import LoginSerializer, RegisterSerializer
 from common.response import result
 from common.auth.authenticate import JWTAuthentication
+from drf_yasg.utils import swagger_auto_schema
 
 class LoginView(APIView):
+    @swagger_auto_schema(
+        method='POST',
+        operation_summary='登录',
+        operation_description='成功返回token\n'
+    )
     @action(methods=['POST'], detail=False)
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -14,13 +20,24 @@ class LoginView(APIView):
     
 class TokenView(APIView):
     authentication_classes = [JWTAuthentication]
+    @swagger_auto_schema(
+        method='POST',
+        operation_summary='刷新token',
+        operation_description='成功返回token\n'
+    )
     @action(methods=['POST'], detail=False)
     def post(self, request):
         serializer = LoginSerializer.Refresh(data={"user_id": request.user.id})
         # 刷新token
         token = serializer.refresh_jwt_token()
         return result.success(data=token)
+    
 class RegisterView(APIView):
+    @swagger_auto_schema(
+        method='POST',
+        operation_summary='注册',
+        operation_description='成功返回ok\n'
+    )
     @action(methods=['POST'], detail=False)
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -30,6 +47,11 @@ class RegisterView(APIView):
 
 class HelloView(APIView):
     authentication_classes = [JWTAuthentication]
+    @swagger_auto_schema(
+        method='GET',
+        operation_summary='测试',
+        operation_description='成功返回hello\n'
+    )
     @action(methods=['GET'], detail=False)
     def get(self, request):
         return result.success(data="hello")

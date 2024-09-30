@@ -1,4 +1,9 @@
+import os
 from .const import CONFIG
+from django.core.management.utils import get_random_secret_key
+
+
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -8,7 +13,35 @@ INSTALLED_APPS = [
     'user',
     'common',
     'setting',
-    'chat'
+    'chat',
+    'django.contrib.staticfiles',  # required for serving swagger ui's css/js files
+    'drf_yasg',
+]
+
+MIDDLEWARE = [
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.security.SecurityMiddleware'
+]
+
+STATIC_URL = '/static/'
+
+# 使用环境变量或生成一个随机的 SECRET_KEY
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', get_random_secret_key())
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
 ]
 
 JWT_TOKEN_EXPIRE_TIME = 3600 * 2  # 2小时
@@ -40,4 +73,10 @@ CACHES = {
             'CULL_FREQUENCY': 5,
         }
     }
+}
+
+# swagger 配置
+SWAGGER_SETTINGS = {
+    'USE_SESSION_AUTH': False,
+    'DEFAULT_MODEL_RENDERING': 'example'
 }

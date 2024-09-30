@@ -11,7 +11,6 @@ from common.pipeline.steps.table_select import TableSelectStep
 from common.pipeline.steps.generate_sql import GenerateSqlStep
 from common.pipeline.steps.execute_sql import ExecuteSqlStep
 from common.pipeline.steps.data_to_chart import DataToChartStep
-import uuid
 from user.models import User
 from common.utils import rsa_util
 import json
