@@ -11,20 +11,22 @@ class ChatView(APIView):
 
     @swagger_auto_schema(
         method='POST',
-        operation_summary='创建聊天',
-        operation_description='成功返回聊天id\n'
+        operation_summary='打开一个聊天会话',
+        operation_description='成功返回聊天id\n',
+        request_body=ChatSerializer.Open
     )
     @action(methods=['POST'], detail=False)
     def post(self, request, datasource_id):
             user_id = request.user.id
-            serializer = ChatSerializer.Create(data={**request.data,"user_id":user_id,"datasource_id":datasource_id})
+            serializer = ChatSerializer.Open(data={**request.data,"user_id":user_id,"datasource_id":datasource_id})
             id = serializer.chat()
             return result.success(str(id))
 
     @swagger_auto_schema(
         method='GET',
         operation_summary='获取所有聊天列表',
-        operation_description='成功返回所有聊天列表\n'
+        operation_description='成功返回所有聊天列表\n',
+        query_serializer=ChatSerializer.Query
     )
     @action(methods=['GET'], detail=False)
     def get(self, request, datasource_id):
@@ -35,7 +37,8 @@ class ChatView(APIView):
     @swagger_auto_schema(
         method='DELETE',
         operation_summary='删除聊天',
-        operation_description='成功返回ok\n'
+        operation_description='成功返回ok\n',
+        request_body=ChatSerializer.Delete
     )
     @action(methods=['DELETE'], detail=False)
     def delete(self, request, datasource_id):
@@ -50,18 +53,20 @@ class ChatView(APIView):
         @swagger_auto_schema(
             method='POST',
             operation_summary='开始聊天',
-            operation_description='结果为流式传输\n'
+            operation_description='结果为流式传输\n',
+            request_body=ChatMessageSerializer.Start
         )
         @action(methods=['POST'], detail=False)
         def post(self, request, datasource_id, chat_id):
             user_id = request.user.id
-            serializer = ChatMessageSerializer.Create(data={**request.data,"user_id":user_id,"datasource_id":datasource_id,"chat_id":chat_id})
+            serializer = ChatMessageSerializer.Start(data={**request.data,"user_id":user_id,"datasource_id":datasource_id,"chat_id":chat_id})
             return serializer.chat()
         
         @swagger_auto_schema(
             method='GET',
             operation_summary='获取单条消息详情',
-            operation_description='成功返回消息详情\n'
+            operation_description='成功返回消息详情\n',
+            query_serializer=ChatMessageSerializer.QueryOne
         )
         @action(methods=['GET'], detail=False)
         def get(self, request, datasource_id, chat_id):
@@ -76,7 +81,8 @@ class ChatView(APIView):
             @swagger_auto_schema(
                 method='PUT',
                 operation_summary='修改demand重新聊天',
-                operation_description='结果为流式传输\n'
+                operation_description='结果为流式传输\n',
+                request_body=ChatMessageSerializer.UpdateDemand
             )
             @action(methods=['PUT'], detail=False)
             def put(self, request, datasource_id, chat_id):
@@ -89,7 +95,8 @@ class ChatView(APIView):
             @swagger_auto_schema(
                 method='PUT',
                 operation_summary='修改sql重新聊天',
-                operation_description='结果为流式传输\n'
+                operation_description='结果为流式传输\n',
+                request_body=ChatMessageSerializer.UpdateSql
             )
             @action(methods=['PUT'], detail=False)
             def put(self, request, datasource_id, chat_id):
@@ -102,7 +109,8 @@ class ChatView(APIView):
             @swagger_auto_schema(
                 method='PUT',
                 operation_summary='修改tables重新聊天',
-                operation_description='结果为流式传输\n'
+                operation_description='结果为流式传输\n',
+                request_body=ChatMessageSerializer.UpdateTables
             )
             @action(methods=['PUT'], detail=False)
             def put(self, request, datasource_id, chat_id):
