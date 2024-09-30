@@ -1,0 +1,48 @@
+{
+  "name": "chat-2-sql-grapg",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^0.0.60",
+    "@ant-design/icons": "^5.4.0",
+    "@ant-design/nextjs-registry": "^1.0.1",
+    "@formatjs/intl-localematcher": "^0.5.4",
+    "@svgr/webpack": "^8.1.0",
+    "@types/negotiator": "^0.6.3",
+    "antd": "^5.20.6",
+    "framer-motion": "^11.5.4",
+    "negotiator": "^0.6.3",
+    "next": "14.2.9",
+    "openai": "^4.62.0",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-markdown": "^9.0.1",
+    "react-syntax-highlighter": "^15.5.0",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.0",
+    "remark-math": "^6.0.0",
+    "sass": "^1.78.0",
+    "uuid": "^10.0.0",
+    "zustand": "5.0.0-rc.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "@types/uuid": "^10.0.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.9",
+    "postcss": "^8.4.45",
+    "tailwindcss": "^3.4.10",
+    "typescript": "^5"
+  }
+}
