@@ -56,3 +56,14 @@ class HelloView(APIView):
     def get(self, request):
         return result.success(data="hello")
 
+class UserView(APIView):
+    authentication_classes = [JWTAuthentication]
+    @swagger_auto_schema(
+        method='GET',
+        operation_summary='获取用户信息',
+        operation_description='成功返回用户信息\n'
+    )
+    @action(methods=['GET'], detail=False)
+    def get(self, request):
+        user = request.auth
+        return result.success(data=user)

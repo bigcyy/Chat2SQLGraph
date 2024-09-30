@@ -32,7 +32,7 @@ class UserTokenDetails(TokenDetails):
         return user,{
             "user_id": user.id,
             "username": user.username,
-            "nick_name": user.nick_name,
+            "nickname": user.nickname,
             "role": user.role,
             "is_active": user.is_active,
             "create_time": user.create_time,
