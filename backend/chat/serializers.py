@@ -14,6 +14,7 @@ from common.pipeline.steps.data_to_chart import DataToChartStep
 from user.models import User
 from common.utils import rsa_util
 import json
+from langchain_core.language_models import BaseChatModel
 
 class ChatSerializer(serializers.Serializer):
     class Query(serializers.Serializer):
@@ -37,7 +38,6 @@ class ChatSerializer(serializers.Serializer):
                 "datasource_id":chat_info.datasource_id.id,
                 "user_id":chat_info.user_id.id,
                 "user_demand":chat_info.user_demand,
-                "chat_content":chat_info.chat_content,
                 "created_at":chat_info.created_at,
                 "updated_at":chat_info.updated_at,
             }
@@ -61,6 +61,27 @@ class ChatSerializer(serializers.Serializer):
             user = User(id = self.data.get("user_id"))
             chat_info = ChatInfo.objects.create(datasource_id=datasource,user_id=user)
             return chat_info.id
+
+    class Delete(serializers.Serializer):
+        datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
+        chat_id = serializers.CharField(required=True,error_messages=ErrMessage.char("聊天 id"))
+        user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("用户 id"))
+
+        def is_valid(self, *, raise_exception=False):
+            super().is_valid(raise_exception=True)
+            # 检查数据源是否存在
+            datasource = Datasource.objects.filter(id=self.data.get("datasource_id"),created_by=self.data.get("user_id")).first()
+            if datasource is None:
+                raise ExceptionCodeConstants.DATASOURCE_NOT_EXIST.value.to_app_api_exception()
+            # 检查聊天是否存在
+            chat_info = ChatInfo.objects.filter(datasource_id=self.data.get("datasource_id"),user_id=self.data.get("user_id"),id=self.data.get("chat_id")).first()
+            if chat_info is None:
+                raise ExceptionCodeConstants.CHAT_NOT_EXIST.value.to_app_api_exception()
+
+        def delete(self):
+            self.is_valid(raise_exception=True)
+            ChatInfo.objects.filter(datasource_id=self.data.get("datasource_id"),user_id=self.data.get("user_id"),id=self.data.get("chat_id")).delete()
+            
 
 class ChatMessageSerializer(serializers.Serializer):
     class Create(serializers.Serializer):
@@ -86,21 +107,31 @@ class ChatMessageSerializer(serializers.Serializer):
                 raise ExceptionCodeConstants.CHAT_NOT_EXIST.value.to_app_api_exception()
         def chat(self):
             self.is_valid(raise_exception=True)
-            user_id = self.data.get("user_id")
-
-            model_config = Model.objects.get(created_by=user_id,id=self.data.get("model_id"))
-            model_provider = ModelProviderConstants.openai_model_provider.value
-            model = model_provider.get_model(model_config.model_name, rsa_util.decrypt(model_config.api_key), model_config.base_url)
+            
+            # 更新聊天信息的user_demand
+            ChatInfo.objects.filter(
+                datasource_id=self.data.get("datasource_id"),
+                user_id=self.data.get("user_id"),
+                id=self.data.get("chat_id")
+            ).update(user_demand=self.data.get("user_demand"))
+            
+            model = self.get_model()
             manager = PipelineManager.PipelineBuilder().set_agent(model).add_step(TableSelectStep()).add_step(GenerateSqlStep()).add_step(ExecuteSqlStep()).add_step(DataToChartStep()).build()
             context = {
                 'datasource_id': self.data.get("datasource_id"),
-                'user_id': user_id,
+                'user_id': self.data.get("user_id"),
                 'chat_id': self.data.get("chat_id"),
                 'user_demand': self.data.get("user_demand")
             }
             generator = manager.run(context)
             return StreamingHttpResponse(streaming_content=generator, content_type='text/event-stream')
-    
+        
+        def get_model(self) -> BaseChatModel:
+            model_config = Model.objects.get(id = self.data.get("model_id"), created_by=self.data.get("user_id"))
+            model_provider = ModelProviderConstants[model_config.provider].value
+            model = model_provider.get_model(model_config.model_name, rsa_util.decrypt(model_config.api_key), model_config.base_url)
+            return model
+        
     class QueryAll(serializers.Serializer):
         datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
         user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("用户 id"))

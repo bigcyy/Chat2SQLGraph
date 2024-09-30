@@ -223,7 +223,7 @@ class TableInfoSerializer(serializers.ModelSerializer):
             TableInfo.objects.bulk_create(table_info_objects)
         def get_model(self) -> BaseChatModel:
             model_config = Model.objects.get(id = self.data.get("model_id"), created_by=self.data.get("user_id"))
-            model_provider = ModelProviderConstants.openai_model_provider.value
+            model_provider = ModelProviderConstants[model_config.provider].value
             model = model_provider.get_model(model_config.model_name, rsa_util.decrypt(model_config.api_key), model_config.base_url)
             return model
         def get_prompt(self,ddl:str):

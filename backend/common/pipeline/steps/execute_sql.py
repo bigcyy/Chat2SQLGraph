@@ -67,5 +67,5 @@ class ExecuteSqlStep(BaseStep):
 
     def get_step_dict_for_saving(self) -> dict:
         return {
-            "data": self.context["data"]
+            "data": self.context.get("data")
         }

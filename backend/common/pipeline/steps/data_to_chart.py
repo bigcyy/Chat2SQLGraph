@@ -74,6 +74,6 @@ class DataToChartStep(BaseStep):
 
     def get_step_dict_for_saving(self) -> dict:
         return {
-            "chart_option":self.context["chart_option"]
+            "chart_option":self.context.get("chart_option")
         }
 
