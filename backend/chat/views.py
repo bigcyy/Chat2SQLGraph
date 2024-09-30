@@ -65,17 +65,47 @@ class ChatView(APIView):
         )
         @action(methods=['GET'], detail=False)
         def get(self, request, datasource_id, chat_id):
-            serializer = ChatMessageSerializer.Query(data={**request.data,"datasource_id":datasource_id,"chat_id":chat_id, "user_id":request.user.id})
-            return result.success(serializer.list())    
+            serializer = ChatMessageSerializer.QueryOne(data={**request.data,"datasource_id":datasource_id,"chat_id":chat_id, "user_id":request.user.id})
+            return result.success(serializer.one())    
 
 
-        @swagger_auto_schema(
-            method='PUT',
-            operation_summary='重新聊天',
-            operation_description='结果为流式传输\n'
-        )
-        @action(methods=['PUT'], detail=False)
-        def put(self, request, datasource_id, chat_id):
-            serializer = ChatMessageSerializer.Update(data={**request.data,"datasource_id":datasource_id,"chat_id":chat_id, "user_id":request.user.id})
-            return serializer.update()
+    
+        class DemandView(APIView):
+
+            authentication_classes = [JWTAuthentication]
+            @swagger_auto_schema(
+                method='PUT',
+                operation_summary='修改demand重新聊天',
+                operation_description='结果为流式传输\n'
+            )
+            @action(methods=['PUT'], detail=False)
+            def put(self, request, datasource_id, chat_id):
+                serializer = ChatMessageSerializer.UpdateDemand(data={**request.data,"datasource_id":datasource_id,"chat_id":chat_id, "user_id":request.user.id})
+                return serializer.update()
+
+        class SqlView(APIView):
+
+            authentication_classes = [JWTAuthentication]
+            @swagger_auto_schema(
+                method='PUT',
+                operation_summary='修改sql重新聊天',
+                operation_description='结果为流式传输\n'
+            )
+            @action(methods=['PUT'], detail=False)
+            def put(self, request, datasource_id, chat_id):
+                serializer = ChatMessageSerializer.UpdateSql(data={**request.data,"datasource_id":datasource_id,"chat_id":chat_id, "user_id":request.user.id})
+                return serializer.update()
+
+        class TablesView(APIView):
+
+            authentication_classes = [JWTAuthentication]
+            @swagger_auto_schema(
+                method='PUT',
+                operation_summary='修改tables重新聊天',
+                operation_description='结果为流式传输\n'
+            )
+            @action(methods=['PUT'], detail=False)
+            def put(self, request, datasource_id, chat_id):
+                serializer = ChatMessageSerializer.UpdateTables(data={**request.data,"datasource_id":datasource_id,"chat_id":chat_id, "user_id":request.user.id})
+                return serializer.update()
 
