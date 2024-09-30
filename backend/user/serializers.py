@@ -52,6 +52,11 @@ class RegisterSerializer(serializers.Serializer):
     """
     注册请求对象
     """
+    nickname = serializers.CharField(required=True,
+                                     error_messages=ErrMessage.char("昵称"),
+                                     max_length=20,
+                                     min_length=1,
+                                     )
     username = serializers.CharField(required=True,
                                      error_messages=ErrMessage.char("用户名"),
                                      max_length=20,
@@ -86,16 +91,16 @@ class RegisterSerializer(serializers.Serializer):
         u = QuerySet(User).filter(Q(username=username)).first()
         if u is not None:
             raise ExceptionCodeConstants.USERNAME_IS_EXIST.value.to_app_api_exception()
-
         return True
     
     def save_user(self):
         m = User(
             **{'username': self.data.get("username"),
-               'role': "test"})
+               'role': "user","nickname":self.data.get("nickname")})
         m.set_password(self.data.get("password"))
         # 插入用户
         m.save()
+        return m.id
 
     def get_jwt_token(self):
         # return generate_jwt_token(self.data.get("username"))

@@ -36,14 +36,14 @@ class RegisterView(APIView):
     @swagger_auto_schema(
         method='POST',
         operation_summary='注册',
-        operation_description='成功返回ok\n'
+        operation_description='成功返回用户id\n'
     )
     @action(methods=['POST'], detail=False)
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save_user()
-        return result.success("xx")
+        id = serializer.save_user()
+        return result.success(data=id)
 
 class HelloView(APIView):
     authentication_classes = [JWTAuthentication]

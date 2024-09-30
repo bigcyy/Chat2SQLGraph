@@ -3,7 +3,7 @@ from .utils import password_encrypt
 
 class User(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="主键id")
-    nick_name = models.CharField(max_length=150, verbose_name="昵称", default="")
+    nickname = models.CharField(max_length=150, verbose_name="昵称", default="")
     username = models.CharField(max_length=150, unique=True, verbose_name="用户名")
     password = models.CharField(max_length=150, verbose_name="密码")
     role = models.CharField(max_length=150, verbose_name="角色")
