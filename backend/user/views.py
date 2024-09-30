@@ -9,7 +9,8 @@ class LoginView(APIView):
     @swagger_auto_schema(
         method='POST',
         operation_summary='登录',
-        operation_description='成功返回token\n'
+        operation_description='成功返回token\n',
+        request_body=LoginSerializer
     )
     @action(methods=['POST'], detail=False)
     def post(self, request):
@@ -23,7 +24,8 @@ class TokenView(APIView):
     @swagger_auto_schema(
         method='POST',
         operation_summary='刷新token',
-        operation_description='成功返回token\n'
+        operation_description='成功返回token\n',
+        request_body=LoginSerializer.Refresh
     )
     @action(methods=['POST'], detail=False)
     def post(self, request):
@@ -36,7 +38,8 @@ class RegisterView(APIView):
     @swagger_auto_schema(
         method='POST',
         operation_summary='注册',
-        operation_description='成功返回用户id\n'
+        operation_description='成功返回用户id\n',
+        request_body=RegisterSerializer
     )
     @action(methods=['POST'], detail=False)
     def post(self, request):

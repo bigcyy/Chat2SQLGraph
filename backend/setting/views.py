@@ -17,18 +17,20 @@ class ModelView(APIView):
     @swagger_auto_schema(
         method='POST',
         operation_summary='添加模型',
-        operation_description='成功返回模型id\n'
+        operation_description='成功返回模型id\n',
+        request_body=ModelSerializer.Add
     )
     @action(methods=['POST'], detail=False)
     def post(self, request):
-        serializer = ModelSerializer.Create(data={**request.data, 'user_id': request.user.id})
-        id = serializer.save_model()
+        serializer = ModelSerializer.Add(data={**request.data, 'user_id': request.user.id})
+        id = serializer.add_model()
         return result.success(id)
 
     @swagger_auto_schema(
         method='GET',
         operation_summary='获取保存的模型列表',
-        operation_description='成功返回保存的模型列表\n'
+        operation_description='成功返回保存的模型列表\n',
+        query_serializer=ModelSerializer.Query
     )
     @action(methods=['GET'], detail=False)
     def get(self, request):
@@ -40,11 +42,12 @@ class ModelView(APIView):
     @swagger_auto_schema(
         method='DELETE',
         operation_summary='删除模型',
-        operation_description='成功返回ok\n'
+        operation_description='成功返回ok\n',
+        request_body=ModelSerializer.Remove
     )
     @action(methods=['DELETE'], detail=False)
     def delete(self, request):
-        serializer = ModelSerializer.Delete(data={**request.data, 'user_id': request.user.id})
+        serializer = ModelSerializer.Remove(data={**request.data, 'user_id': request.user.id})
         serializer.delete_model()
         return result.success("ok")
 
@@ -55,7 +58,8 @@ class ProviderView(APIView):
     @swagger_auto_schema(
         method='GET',
         operation_summary='获取模型提供者列表',
-        operation_description='成功返回模型提供者列表\n'
+        operation_description='成功返回模型提供者列表\n',
+        query_serializer=ModelSerializer.Query
     ) 
     @action(methods=['GET'], detail=False)
     def get(self, request):
@@ -69,7 +73,8 @@ class ProviderView(APIView):
         @swagger_auto_schema(
             method='GET',
             operation_summary='获取模型列表',
-            operation_description='成功返回模型列表\n'
+            operation_description='成功返回模型列表\n',
+            query_serializer=ModelSerializer.Query
         )
         @action(methods=['GET'], detail=False)
         def get(self, request, provider:str):
@@ -86,19 +91,21 @@ class DatasourceView(APIView):
     @swagger_auto_schema(
         method='POST',
         operation_summary='添加数据源',
-        operation_description='成功返回数据源id\n'
+        operation_description='成功返回数据源id\n',
+        request_body=DatasourceSerializer.AddDatasource
     )
     @action(methods=['POST'], detail=False)
     def post(self, request):
-        serializer = DatasourceSerializer.Create(data={**request.data, 'user_id': request.user.id})
-        id = serializer.save_datasource()
+        serializer = DatasourceSerializer.AddDatasource(data={**request.data, 'user_id': request.user.id})
+        id = serializer.add_datasource()
         return result.success(id)
     
     
     @swagger_auto_schema(
         method='GET',
         operation_summary='获取数据源列表',
-        operation_description='成功返回数据源列表\n'
+        operation_description='成功返回数据源列表\n',
+        query_serializer=DatasourceSerializer.Query
     )
     @action(methods=['GET'], detail=False)
     def get(self, request):
@@ -109,11 +116,12 @@ class DatasourceView(APIView):
     @swagger_auto_schema(
         method='DELETE',
         operation_summary='删除数据源',
-        operation_description='成功返回ok\n'
+        operation_description='成功返回ok\n',
+        request_body=DatasourceSerializer.DeleteDatasource
     )
     @action(methods=['DELETE'], detail=False)
     def delete(self, request):
-        serializer = DatasourceSerializer.Delete(data={**request.data, 'user_id': request.user.id})
+        serializer = DatasourceSerializer.DeleteDatasource(data={**request.data, 'user_id': request.user.id})
         serializer.delete_datasource()
         return result.success("ok")
 
@@ -123,7 +131,8 @@ class DatasourceView(APIView):
         @swagger_auto_schema(
             method='GET',
             operation_summary='获取表信息列表',
-            operation_description='成功返回表信息列表\n'
+            operation_description='成功返回表信息列表\n',
+            query_serializer=TableInfoSerializer.Query
         )
         @action(methods=['GET'], detail=False)
         def get(self, request, datasource_id:int):
@@ -134,7 +143,8 @@ class DatasourceView(APIView):
         @swagger_auto_schema(
             method='POST',
             operation_summary='添加表信息',
-            operation_description='成功返回ok\n'
+            operation_description='成功返回ok\n',
+            request_body=TableInfoSerializer.Create
         )
         @action(methods=['POST'], detail=False)
         def post(self, request, datasource_id:int):
@@ -151,11 +161,12 @@ class DatasourceView(APIView):
         @swagger_auto_schema(
             method='DELETE',
             operation_summary='删除表信息',
-            operation_description='成功返回ok\n'
+            operation_description='成功返回ok\n',
+            request_body=TableInfoSerializer.DeleteTable
         )
         @action(methods=['DELETE'], detail=False)
         def delete(self, request, datasource_id:int):
-            serializer = TableInfoSerializer.Delete(data={**request.data, 'datasource_id': datasource_id, 'user_id': request.user.id})
+            serializer = TableInfoSerializer.DeleteTable(data={**request.data, 'datasource_id': datasource_id, 'user_id': request.user.id})
             serializer.delete_table_info()
             return result.success("ok")
 
@@ -165,7 +176,8 @@ class DatasourceView(APIView):
         @swagger_auto_schema(
             method='GET',
             operation_summary='获取远程表信息列表',
-            operation_description='成功返回远程表信息列表\n'
+            operation_description='成功返回远程表信息列表\n',
+            query_serializer=RemoteTableInfoSerializer.Query
         )
         @action(methods=['GET'], detail=False)
         def get(self, request, datasource_id:int):

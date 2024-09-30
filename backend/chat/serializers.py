@@ -42,7 +42,7 @@ class ChatSerializer(serializers.Serializer):
                 "updated_at":chat_info.updated_at,
             }
         
-    class Create(serializers.Serializer):
+    class Open(serializers.Serializer):
         datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
         user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("用户 id"))
         
@@ -84,7 +84,7 @@ class ChatSerializer(serializers.Serializer):
             
 
 class ChatMessageSerializer(serializers.Serializer):
-    class Create(serializers.Serializer):
+    class Start(serializers.Serializer):
         datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
         user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("用户 id"))
         chat_id = serializers.CharField(required=True,error_messages=ErrMessage.char("聊天 id"))

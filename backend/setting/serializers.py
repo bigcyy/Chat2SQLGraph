@@ -15,7 +15,7 @@ import threading
 
 class DatasourceSerializer(serializers.ModelSerializer):
 
-    class Create(serializers.ModelSerializer):
+    class AddDatasource(serializers.ModelSerializer):
         user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("创建人"))
         datasource_name = serializers.CharField(required=True,error_messages=ErrMessage.char("数据源名称"),max_length=20,min_length=1)
         datasource_description = serializers.CharField(required=False,error_messages=ErrMessage.char("数据源描述"),max_length=1024,min_length=0)
@@ -52,7 +52,7 @@ class DatasourceSerializer(serializers.ModelSerializer):
                     connection.ping(reconnect=True)
             except pymysql.Error as e:
                 raise ExceptionCodeConstants.DATASOURCE_CONNECT_FAILED.value.to_app_api_exception()
-        def save_datasource(self):
+        def add_datasource(self):
             self.is_valid(raise_exception=True)
             user= User(id = self.data.get("user_id"))
             m = Datasource(
@@ -68,7 +68,7 @@ class DatasourceSerializer(serializers.ModelSerializer):
             m.save()
             return m.id
     
-    class Delete(serializers.ModelSerializer):
+    class DeleteDatasource(serializers.ModelSerializer):
         datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
         user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("创建人"))  
         class Meta:
@@ -245,7 +245,7 @@ class TableInfoSerializer(serializers.ModelSerializer):
     <summary>${{简洁的摘要}}</summary>
     """
     
-    class Delete(serializers.ModelSerializer):
+    class DeleteTable(serializers.ModelSerializer):
         datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
         table_info_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("表 id"))
         user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("创建人"))
@@ -335,7 +335,7 @@ class ModelSerializer(serializers.ModelSerializer):
                 'provider': model.provider,
                 'created_at': model.created_at,
             }
-    class Create(serializers.ModelSerializer):
+    class Add(serializers.ModelSerializer):
 
         name = serializers.CharField(required=True,error_messages=ErrMessage.char("模型别名"),max_length=20,min_length=1)
         model_name = serializers.CharField(required=True,error_messages=ErrMessage.char("模型名称"),max_length=40,min_length=1)
@@ -365,7 +365,7 @@ class ModelSerializer(serializers.ModelSerializer):
                 raise ExceptionCodeConstants.MODEL_NICKNAME_IS_EXIST.value.to_app_api_exception()
 
 
-        def save_model(self) -> int:
+        def add_model(self) -> int:
             self.is_valid(raise_exception=True)
             user_id = self.data.get("user_id")
             user = User(id=user_id)
@@ -381,7 +381,7 @@ class ModelSerializer(serializers.ModelSerializer):
             )
             m.save()    
             return m.id
-    class Delete(serializers.ModelSerializer):
+    class Remove(serializers.ModelSerializer):
         model_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("模型 id"))
         user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("创建人"))
         class Meta:
