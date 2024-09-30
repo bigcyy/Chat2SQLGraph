@@ -14,6 +14,7 @@ from common.pipeline.steps.data_to_chart import DataToChartStep
 from user.models import User
 from common.utils import rsa_util
 import json
+from langchain_core.language_models import BaseChatModel
 
 class ChatSerializer(serializers.Serializer):
     class Query(serializers.Serializer):
@@ -114,10 +115,7 @@ class ChatMessageSerializer(serializers.Serializer):
                 id=self.data.get("chat_id")
             ).update(user_demand=self.data.get("user_demand"))
             
-
-            model_config = Model.objects.get(created_by=self.data.get("user_id"),id=self.data.get("model_id"))
-            model_provider = ModelProviderConstants.openai_model_provider.value
-            model = model_provider.get_model(model_config.model_name, rsa_util.decrypt(model_config.api_key), model_config.base_url)
+            model = self.get_model()
             manager = PipelineManager.PipelineBuilder().set_agent(model).add_step(TableSelectStep()).add_step(GenerateSqlStep()).add_step(ExecuteSqlStep()).add_step(DataToChartStep()).build()
             context = {
                 'datasource_id': self.data.get("datasource_id"),
@@ -127,7 +125,13 @@ class ChatMessageSerializer(serializers.Serializer):
             }
             generator = manager.run(context)
             return StreamingHttpResponse(streaming_content=generator, content_type='text/event-stream')
-    
+        
+        def get_model(self) -> BaseChatModel:
+            model_config = Model.objects.get(id = self.data.get("model_id"), created_by=self.data.get("user_id"))
+            model_provider = ModelProviderConstants[model_config.provider].value
+            model = model_provider.get_model(model_config.model_name, rsa_util.decrypt(model_config.api_key), model_config.base_url)
+            return model
+        
     class QueryAll(serializers.Serializer):
         datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
         user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("用户 id"))
