@@ -5,7 +5,9 @@ from common.response import result
 from common.providers.model_provider_constants import ModelProviderConstants
 from common.auth.authenticate import JWTAuthentication
 from common.utils.utils import query_params_to_single_dict
-
+from .serializers import RemoteTableInfoSerializer
+import asyncio
+import time
 # Create your views here.
 
 
@@ -85,9 +87,15 @@ class DatasourceView(APIView):
 
         @action(methods=['POST'], detail=False)
         def post(self, request, datasource_id:int):
+            
+            # start_time = time.time()
             serializer = TableInfoSerializer.Create(data={**request.data, 'datasource_id': datasource_id, 'user_id': request.user.id})
-            id = serializer.save_table_info()
-            return result.success(id)
+            # asyncio.run(serializer.async_save_table_info())
+            # asyncio.run(serializer.test())
+            serializer.multi_thread_save()
+            # serializer.save_table_info()
+            # end_time = time.time()
+            return result.success("ok")
 
         @action(methods=['DELETE'], detail=False)
         def delete(self, request, datasource_id:int):
@@ -95,3 +103,11 @@ class DatasourceView(APIView):
             serializer.delete_table_info()
             return result.success("ok")
 
+    class RemoteTableInfoView(APIView):
+        authentication_classes = [JWTAuthentication]
+
+        @action(methods=['GET'], detail=False)
+        def get(self, request, datasource_id:int):
+            serializer = RemoteTableInfoSerializer.Query(data={**request.data, 'datasource_id': datasource_id, 'user_id': request.user.id})
+            table_infos = serializer.query_table_info()
+            return result.success(table_infos)

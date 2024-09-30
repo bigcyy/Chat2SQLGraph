@@ -73,3 +73,4 @@ class ExceptionCodeConstants(Enum):
     TABLE_NOT_EXIST = ExceptionCodeConstantsValue(1017, "表不存在")
     CHAT_NOT_EXIST = ExceptionCodeConstantsValue(1018, "聊天不存在")
     DATASOURCE_CONNECT_FAILED = ExceptionCodeConstantsValue(1019, "数据源连接失败")
+    TABLE_NAME_IS_EXIST = ExceptionCodeConstantsValue(1020,"数据表已经导入此数据源")

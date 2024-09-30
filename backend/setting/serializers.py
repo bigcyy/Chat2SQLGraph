@@ -8,6 +8,10 @@ from common.providers.model_provider_constants import ModelProviderConstants
 from langchain.chat_models.base import BaseChatModel
 import pymysql
 from common.utils import rsa_util
+import asyncio
+from asgiref.sync import sync_to_async
+import time
+import threading
 
 class DatasourceSerializer(serializers.ModelSerializer):
 
@@ -102,24 +106,24 @@ class TableInfoSerializer(serializers.ModelSerializer):
     class Create(serializers.ModelSerializer):
         model_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("模型 id"))
         user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("创建人"))
-        name = serializers.CharField(required=True,error_messages=ErrMessage.char("表名称"),max_length=20,min_length=1)
-        ddl = serializers.CharField(required=True,error_messages=ErrMessage.char("表结构"))
+        table_name_list = serializers.ListField(required=True,error_messages=ErrMessage.char("表名称列表"))
         datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
 
         class Meta:
             model = TableInfo
-            fields = ['user_id','name','ddl','datasource_id','model_id']
+            fields = ['user_id','table_name_list','datasource_id','model_id']
     
         def is_valid(self, *, raise_exception=False):
             super().is_valid(raise_exception=True)
-            # 表是否存在
-            table = QuerySet(TableInfo).filter(Q(name=self.data.get("name"))).first()
-            if table is not None:
-                raise ExceptionCodeConstants.TABLE_NAME_IS_EXIST.value.to_app_api_exception()
             # 是否存在此数据库
             datasource = Datasource.objects.filter(id=self.data.get("datasource_id"),created_by=self.data.get("user_id")).first()
             if datasource is None:
                 raise ExceptionCodeConstants.DATASOURCE_NOT_EXIST.value.to_app_api_exception()
+            # 表是否存在
+            for table_name in self.data.get("table_name_list"):
+                table = TableInfo.objects.filter(name=table_name,datasource_id=self.data.get("datasource_id")).first()
+                if table is not None:
+                    raise ExceptionCodeConstants.TABLE_NAME_IS_EXIST.value.to_app_api_exception()
             # 模型是否存在
             model = Model.objects.filter(id=self.data.get("model_id"),created_by=self.data.get("user_id")).first()
             if model is None:
@@ -129,37 +133,99 @@ class TableInfoSerializer(serializers.ModelSerializer):
             try:
                 with pymysql.connect(host=rsa_util.decrypt(datasource.url), port=datasource.port, user=datasource.username, password=rsa_util.decrypt(datasource.password) , database=datasource.database_name) as connection:
                     with connection.cursor() as cursor:
-                        cursor.execute(f"SHOW TABLES LIKE '{self.data.get('name')}'")
-                        result = cursor.fetchone()
-                        if not result:
-                            raise ExceptionCodeConstants.TABLE_NOT_EXIST.value.to_app_api_exception()
+                        for table_name in self.data.get("table_name_list"):
+                            cursor.execute("SHOW TABLES LIKE %s", (table_name,))
+                            result = cursor.fetchone()
+                            if not result:
+                                raise ExceptionCodeConstants.TABLE_NOT_EXIST.value.to_app_api_exception()
+                        
             except pymysql.Error:
                 raise ExceptionCodeConstants.DATASOURCE_CONNECT_FAILED.value.to_app_api_exception()
 
         def save_table_info(self):
             self.is_valid(raise_exception=True)
+            datasource = Datasource.objects.get(id=self.data.get("datasource_id"))
+            # 获取表的 DDL
+            ddl_list = []
+            try:
+                with pymysql.connect(host=rsa_util.decrypt(datasource.url), port=datasource.port, user=datasource.username, password=rsa_util.decrypt(datasource.password) , database=datasource.database_name) as connection:
+                    with connection.cursor() as cursor:
+                        for table_name in self.data.get("table_name_list"):
+                            cursor.execute("SHOW CREATE TABLE %s"%table_name)
+                            ddl = cursor.fetchone()
+                            ddl_list.append(ddl[1])
+            except pymysql.Error:
+                raise ExceptionCodeConstants.DATASOURCE_CONNECT_FAILED.value.to_app_api_exception()
             # 调用 LLM 总结摘要
             model = self.get_model()
-
-            message = model.invoke(self.get_prompt(self.data.get("ddl")))
-
+            summary_list = []
+            for ddl in ddl_list:
+                message = model.invoke(self.get_prompt(ddl))
+                summary_list.append(message.content)
             datasource = Datasource(id=self.data.get("datasource_id"))
             # 保存表
-            m = TableInfo(
-                **{'name': self.data.get("name"),
-                'ddl': self.data.get("ddl"),
-                'datasource_id': datasource,
-                'summary': message.content
+            for i in range(len(self.data.get("table_name_list"))):
+                m = TableInfo(
+                    **{'name': self.data.get("table_name_list")[i],
+                    'ddl': ddl_list[i],
+                    'datasource_id': datasource,
+                    'summary': summary_list[i]
                 })
-            m.save()
+                m.save()
             return m.id
+        def multi_thread_save(self):
+            self.is_valid(raise_exception=True)
+            datasource = Datasource.objects.get(id=self.data.get("datasource_id"))
         
+            def multi_thread_get_table_ddl_and_summary(datasource,table_name):
+                try:
+                    with pymysql.connect(host=rsa_util.decrypt(datasource.url), port=datasource.port, user=datasource.username, password=rsa_util.decrypt(datasource.password) , database=datasource.database_name) as connection:
+                        with connection.cursor() as cursor:
+                            # todo sql 注入风险
+                            cursor.execute("SHOW CREATE TABLE %s"%table_name)
+                            ddl = cursor.fetchone()[1]
+                            summary = multi_thread_get_summary(table_name,ddl)
+                except pymysql.Error as e:
+                    raise ExceptionCodeConstants.DATASOURCE_CONNECT_FAILED.value.to_app_api_exception()
+                return {
+                    "table_name": table_name,
+                    "ddl": ddl,
+                    "summary": summary
+                }
+
+            def multi_thread_get_summary(table_name:str,ddl:str):
+                model = self.get_model()
+                message = model.invoke(self.get_prompt(ddl))
+                return {
+                    "table_name": table_name,
+                    "summary": message.content
+                }
+
+            threads = []
+            results = []
+            for table_name in self.data.get("table_name_list"):
+                thread = threading.Thread(target=lambda tn=table_name: results.append(multi_thread_get_table_ddl_and_summary(datasource, tn)))
+                threads.append(thread)
+                thread.start()
+
+            for thread in threads:
+                thread.join()
+
+            # Save table info
+            table_info_objects = [
+                TableInfo(
+                    name=result["table_name"],
+                    ddl=result["ddl"],
+                    datasource_id=datasource,
+                    summary=result["summary"]
+                ) for result in results
+            ]
+            TableInfo.objects.bulk_create(table_info_objects)
         def get_model(self) -> BaseChatModel:
             model_config = Model.objects.get(id = self.data.get("model_id"), created_by=self.data.get("user_id"))
             model_provider = ModelProviderConstants.openai_model_provider.value
             model = model_provider.get_model(model_config.model_name, rsa_util.decrypt(model_config.api_key), model_config.base_url)
             return model
-        
         def get_prompt(self,ddl:str):
             return f"""
     ## 角色
@@ -325,6 +391,35 @@ class ModelSerializer(serializers.ModelSerializer):
             self.is_valid(raise_exception=True)
             Model.objects.filter(id=self.data.get("model_id"),created_by=self.data.get("user_id")).delete()
     
+class RemoteTableInfoSerializer(serializers.ModelSerializer):
+    class Query(serializers.ModelSerializer):
+        datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
+        user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("创建人"))
+        class Meta:
+            model = TableInfo
+            fields = ['datasource_id','user_id']
+        
+        def is_valid(self, *, raise_exception=False):
+            super().is_valid(raise_exception=True)
+            # 数据源是否存在
+            datasource = Datasource.objects.filter(id=self.data.get("datasource_id"),created_by=self.data.get("user_id")).first()
+            if datasource is None:
+                raise ExceptionCodeConstants.DATASOURCE_NOT_EXIST.value.to_app_api_exception()
+
+        def query_table_info(self):
+            self.is_valid(raise_exception=True)
+            # 获取数据源
+            datasource = Datasource.objects.filter(id=self.data.get("datasource_id"),created_by=self.data.get("user_id")).first()
+            # 连接数据库
+            try:
+                with pymysql.connect(host=rsa_util.decrypt(datasource.url), port=datasource.port, user=datasource.username, password=rsa_util.decrypt(datasource.password) , database=datasource.database_name) as connection:
+                    with connection.cursor() as cursor:
+                        cursor.execute("SHOW TABLES")
+                        tables = cursor.fetchall()
+            except pymysql.Error:
+                raise ExceptionCodeConstants.DATASOURCE_CONNECT_FAILED.value.to_app_api_exception()
+
+            return tables
     
     
     
