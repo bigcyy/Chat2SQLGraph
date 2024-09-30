@@ -37,7 +37,6 @@ class ChatSerializer(serializers.Serializer):
                 "datasource_id":chat_info.datasource_id.id,
                 "user_id":chat_info.user_id.id,
                 "user_demand":chat_info.user_demand,
-                "chat_content":chat_info.chat_content,
                 "created_at":chat_info.created_at,
                 "updated_at":chat_info.updated_at,
             }
