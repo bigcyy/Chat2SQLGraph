@@ -107,11 +107,6 @@ declare namespace Store {
     currentDisplayModel: string;
     currentModel: string;
     historyNum: number;
-    random: number;
-    sysPrompt: string;
-    filePostUrl: string;
-    secret: string;
-    maxFileSize: number;
   }
   interface SettingState {
     settings: Setting;

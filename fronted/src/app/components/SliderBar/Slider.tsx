@@ -6,13 +6,13 @@ import {
   GithubOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Jacques_Francois } from "next/font/google";
 import React, { useState, useEffect, useRef } from "react";
 import { IconProvider } from "../IconProvider";
-import Modal from "../Modal";
+import { Button, Form, Input, Modal } from "antd";
 import Setting from "../settings/Setting";
 import OutsideClickHandler from "../OutsideClickHandler";
 import {
@@ -29,17 +29,23 @@ const playpen_Sans = Jacques_Francois({
 
 export default function Slider({ t }: Slider.SlideProps) {
   const path = usePathname();
+  const router = useRouter();
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
 
   const [showUserInfo, setShowUserInfo] = useState(false);
   const [showSetting, setShowSetting] = useState(false);
+  const [showHistory, setShowHistory] = useState(true);
+
+  const databaseForm = Form.useForm<Slider.DatabaseForm>()[0];
 
   const sliderRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLDivElement>(null);
+
+  
 
   const { user, getUserFromLocal } = useUserStore();
   const { getSettingFromLocal } = useSettingStore();
@@ -54,13 +60,13 @@ export default function Slider({ t }: Slider.SlideProps) {
         setShowSetting(true);
       },
     },
-    // {
-    //   id: "1",
-    //   title: t.slider.logout,
-    //   click: () => {
-    //     router.push("/login");
-    //   },
-    // },
+    {
+      id: "1",
+      title: t.slider.logout,
+      click: () => {
+        router.push("/login");
+      },
+    },
   ];
 
   useEffect(() => {
@@ -93,8 +99,17 @@ export default function Slider({ t }: Slider.SlideProps) {
     getUserFromLocal();
     if (isPinned === "true") {
       setIsPinned(true);
+    } else {
+      setIsPinned(false);
+    }
+    if (screen.width < 768) {
+      setIsPinned(false);
     }
   }, [path]);
+
+  const onSubmitDatabase = (values: Slider.DatabaseForm) => {
+    console.log(values);
+  };
 
   const handleSpin = () => {
     localStorage.setItem("isPinned", (!isPinned).toString());
@@ -150,7 +165,7 @@ export default function Slider({ t }: Slider.SlideProps) {
             </Link>
             {/* 固定 */}
             <div
-              className={` cursor-pointer hover:bg-orange-200 rounded-md p-1 w-6 h-6 text-sm flex items-center justify-center transition-all duration-200 max-sm:hidden ${
+              className={`cursor-pointer hover:bg-orange-200 rounded-md p-1 w-6 h-6 text-sm flex items-center justify-center transition-all duration-200 max-sm:hidden ${
                 isExpanded || isPinned
                   ? "opacity-100 translate-x-0"
                   : "opacity-0 pointer-events-none -translate-x-full"
@@ -164,7 +179,7 @@ export default function Slider({ t }: Slider.SlideProps) {
               />
             </div>
             <div
-              className={` cursor-pointer hover:bg-orange-200 rounded-md p-1 w-6 h-6 text-sm items-center justify-center transition-all duration-200 block sm:hidden ${
+              className={`cursor-pointer hover:bg-orange-200 rounded-md p-1 w-6 h-6 text-sm items-center justify-center transition-all duration-200 block sm:hidden ${
                 isExpanded || isPinned
                   ? "opacity-100 translate-x-0"
                   : "opacity-0 pointer-events-none -translate-x-full"
@@ -177,7 +192,7 @@ export default function Slider({ t }: Slider.SlideProps) {
           <div
             className={`p-3 pb-1 border relative rounded-lg rounded-l-none border-[#dcb272] bg-gradient-to-r from-orange-100/50
               to-orange-50/10 max-sm:from-orange-50 max-sm:to-amber-50 max-sm:shadow-none max-sm:!mt-0 max-sm:rounded-none max-sm:!h-screen
-              shadow-2xl shadow-orange-300 ease-in-out duration-100 ${
+              shadow-2xl shadow-orange-300 ease-in-out duration-100 flex flex-col justify-start ${
                 isExpanded || isPinned
                   ? "translate-x-0 opacity-100"
                   : "-translate-x-full opacity-0"
@@ -191,35 +206,116 @@ export default function Slider({ t }: Slider.SlideProps) {
             }}
             ref={sliderRef}
           >
-            {/* 这是一个单纯的占位符 */}
-            <div
-              className={`w-18rem text-xl !opacity-100 pointer-events-none h-5`}
-              style={{ width: "18rem" }}
-            ></div>
-            {/* 新对话区域 */}
-            <Link href={"/"}>
+            {/* 新对话及其以上部分 */}
+            <div>
+              {/* 这是一个单纯的占位符 */}
               <div
-                className={`mt-5 mb-5 cursor-pointer text-orange-700 hover:bg-amber-800/10 rounded-md p-1 flex items-center`}
-                style={{ fontSize: "1.07rem" }}
-              >
-                <IconProvider.ChatAdd
-                  width={20}
-                  height={20}
-                  className="-rotate-90"
-                />
-                <span className="ml-1">{t.slider.new}</span>
-              </div>
-            </Link>
+                className={`w-18rem text-xl !opacity-100 pointer-events-none h-5`}
+                style={{ width: "18rem" }}
+              ></div>
+              {/* 新对话区域 */}
+              <Link href={"/"}>
+                <div
+                  className={`mt-5 mb-5 cursor-pointer text-orange-700 hover:bg-amber-800/10 rounded-md p-1 flex items-center`}
+                  style={{ fontSize: "1.07rem" }}
+                >
+                  <IconProvider.ChatAdd
+                    width={20}
+                    height={20}
+                    className="-rotate-90"
+                  />
+                  <span className="ml-1">{t.slider.new}</span>
+                </div>
+              </Link>
+            </div>
             {/* 从这里开始对话历史到底部 */}
-            <div className="flex flex-col gap-2">
-              <div>
+            <div className="flex flex-col gap-2 justify-between flex-1">
+              {/* 这里是数据库信息 */}
+              <div className={`${showHistory ? "" : "flex-1"} flex flex-col`}>
+                <div
+                  className="font-bold mb-3 relative group flex justify-between cursor-pointer"
+                  onClick={() => setShowHistory(!showHistory)}
+                >
+                  <span>数据库配置</span>
+                  <div className="cursor-pointer">
+                    <DownOutlined
+                      className={`${showHistory ? "rotate-180" : ""}`}
+                    />
+                  </div>
+                </div>
+                <Form
+                  form={databaseForm}
+                  onFinish={onSubmitDatabase}
+                  layout="vertical"
+                  className={`flex flex-col gap-2 ${
+                    showHistory ? "hidden" : ""
+                  }`}
+                >
+                  <div className="flex w-full gap-1">
+                    <Form.Item
+                      className="!m-0 flex-3"
+                      name="host"
+                      rules={[{ required: true, message: "请输入数据库地址" }]}
+                    >
+                      <Input placeholder="数据库地址" />
+                    </Form.Item>
+                    <Form.Item
+                      className="!m-0 flex-1"
+                      name="port"
+                      rules={[{ required: true, message: "请输入端口" }]}
+                    >
+                      <Input placeholder="端口" />
+                    </Form.Item>
+                  </div>
+
+                  <Form.Item
+                    className="!m-0"
+                    name="db_username"
+                    rules={[{ required: true, message: "请输入数据库用户名" }]}
+                  >
+                    <Input placeholder="请输入数据库用户名" />
+                  </Form.Item>
+                  <Form.Item
+                    className="!m-0"
+                    name="db_password"
+                    rules={[{ required: true, message: "请输入数据库密码" }]}
+                  >
+                    <Input.Password placeholder="请输入数据库密码" />
+                  </Form.Item>
+                  <div className="flex w-full gap-1">
+                    <Form.Item
+                      className="!m-0 flex-3"
+                      name="database"
+                      rules={[{ required: true, message: "请输入数据库名称" }]}
+                    >
+                      <Input placeholder="请输入数据库名称" />
+                    </Form.Item>
+                    <Form.Item className="!m-0 flex-1">
+                      <Button type="primary" htmlType="submit" block>
+                        连接
+                      </Button>
+                    </Form.Item>
+                  </div>
+                </Form>
+              </div>
+              <div className={`${showHistory ? "flex-1" : ""}`}>
                 {/* 对话历史 */}
-                <div className="font-bold mb-3 relative group">
+                <div
+                  className={`font-bold mb-3 relative group flex justify-between cursor-pointer
+                  ${showHistory ? "" : ""}`}
+                  onClick={() => setShowHistory(!showHistory)}
+                >
                   <span>{t.slider.history}</span>
+                  <div className="cursor-pointer">
+                    <DownOutlined
+                      className={`${showHistory ? "" : "rotate-180"}`}
+                    />
+                  </div>
                 </div>
                 <div
-                  className="flex flex-col text-sm overflow-y-auto scrollbar gap-1"
-                  style={{ height: "calc(100vh - 15rem)" }}
+                  className={`flex flex-col text-sm overflow-y-auto scrollbar gap-1
+                    ${showHistory ? "flex-1" : "hidden"}`}
+                  // style={{ height: "calc(100vh - 15rem)" }}
                 >
                   {chatData.length == 0 && (
                     <div className="flex items-center justify-center h-full">
@@ -323,7 +419,10 @@ export default function Slider({ t }: Slider.SlideProps) {
                     <SettingOutlined />
                   </div>
                   <div className="cursor-pointer rounded-lg hover:bg-orange-200 w-6 h-6 flex items-center justify-center">
-                    <Link href="https://github.com/1653756334/claude-imitate" target="_blank">
+                    <Link
+                      href="https://github.com/1653756334/claude-imitate"
+                      target="_blank"
+                    >
                       <GithubOutlined />
                     </Link>
                   </div>
@@ -353,9 +452,14 @@ export default function Slider({ t }: Slider.SlideProps) {
       </div>
       {/* 设置 */}
       <Modal
-        isOpen={showSetting}
-        onClose={() => setShowSetting(false)}
-        onConfirm={() => setShowSetting(false)}
+        open={showSetting}
+        onCancel={() => setShowSetting(false)}
+        onOk={() => setShowSetting(false)}
+        centered
+        okText={t.confirm.yes}
+        cancelText={t.confirm.no}
+        closable={false}
+        maskClosable={false}
       >
         <Setting t={t} />
       </Modal>

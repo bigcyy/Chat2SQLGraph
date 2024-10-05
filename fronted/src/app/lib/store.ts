@@ -11,11 +11,6 @@ export const useSettingStore = create<Store.SettingState & Store.SettingAction>(
       currentDisplayModel: "GPT-4o mini",
       currentModel: "gpt-4o-mini",
       historyNum: 5,
-      random: 0.5,
-      sysPrompt: "You are a helpful assistant.",
-      filePostUrl: "",
-      secret: "",
-      maxFileSize: 10,
     },
     getSettingFromLocal: () => {
       const setting = localStorage.getItem("setting");

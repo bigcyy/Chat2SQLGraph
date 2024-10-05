@@ -27,7 +27,7 @@ export default function Setting({ t }: SettingProps) {
     },
   ];
   return (
-    <div className="bg-white shadow-md rounded-lg md:w-[500px] max-md:w-[95vw] mx-auto text-gray-700 p-2">
+    <div className="bg-white shadow-md rounded-lg md:max-w-[500px] max-md:w-[95vw] mx-auto text-gray-700 p-2 !w-full">
       <Tabs items={items} />
     </div>
   );

@@ -4,19 +4,11 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     const reqJson = await req.json();
-    let api_base;
-    let api_key;
-
-    if (reqJson.secret && reqJson.secret == process.env.SECRET_KEY) {
-      api_base =
-        reqJson.baseUrl ||
-        process.env.OPENAI_API_BASE ||
-        "https://api.openai.com";
-      api_key = reqJson.key || process.env.OPENAI_API_KEY;
-    } else {
-      api_base = reqJson.baseUrl || "https://api.openai.com";
-      api_key = reqJson.key || "";
-    }
+    const api_base =
+      reqJson.baseUrl ||
+      process.env.OPENAI_API_BASE ||
+      "https://api.openai.com";
+    const api_key = reqJson.key || process.env.OPENAI_API_KEY;
 
     if (api_key == "") {
       return NextResponse.json(
@@ -29,7 +21,7 @@ export async function POST(req: NextRequest) {
       apiKey: api_key,
       baseURL: api_base?.slice(-1) == "/" ? api_base + "v1" : api_base + "/v1",
     });
-    
+
     const encoder = new TextEncoder();
     const stream = new TransformStream();
     const writer = stream.writable.getWriter();
@@ -72,9 +64,18 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     // console.error("API 错误:", error);
     if (error.error) {
-      return NextResponse.json({ msg: { error: error.error }, code: 500 }, { status: 500 });
+      return NextResponse.json(
+        { msg: { error: error.error }, code: 500 },
+        { status: 500 }
+      );
     } else {
-      return NextResponse.json({ msg: { error: "api error, please check your api key and model name" }, code: 500 }, { status: 500 });
+      return NextResponse.json(
+        {
+          msg: { error: "api error, please check your api key and model name" },
+          code: 500,
+        },
+        { status: 500 }
+      );
     }
   }
 }

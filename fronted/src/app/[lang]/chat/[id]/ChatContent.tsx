@@ -1,9 +1,5 @@
 "use client";
-import {
-  ArrowUpOutlined,
-  CommentOutlined,
-  DownOutlined,
-} from "@ant-design/icons";
+import { CommentOutlined, DownOutlined } from "@ant-design/icons";
 import React, { useRef, useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { v4 as uuid } from "uuid";
@@ -11,7 +7,6 @@ import { v4 as uuid } from "uuid";
 import OutsideClickHandler from "@/app/components/OutsideClickHandler";
 import Confirm from "@/app/components/Comfirm";
 import Modify from "@/app/components/Modify";
-import DropdownMenu from "@/app/components/DropDown";
 import SelfMessage from "@/app/components/SelfMessage";
 import AssistantMsg from "@/app/components/AssistantMsg";
 import {
@@ -22,7 +17,6 @@ import {
 import { throttle } from "@/app/lib/utils";
 import { message as Message } from "antd";
 import { IconProvider } from "@/app/components/IconProvider";
-import HintText from "@/app/components/HintText";
 export default function ChatContent({ t }: Chat.ChatContentProps) {
   const pathname = usePathname();
   const session_id = pathname.split("/").slice(-1)[0];
@@ -35,7 +29,7 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
   const breakStreamRef = useRef(false);
 
   const chatListRef = useRef<HTMLDivElement>(null);
-  const { settings, saveOneSettingToLocal } = useSettingStore();
+  const { settings } = useSettingStore();
   const { user } = useUserStore();
 
   const {
@@ -149,13 +143,6 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
       },
     });
   };
-  const handleEditChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value);
-  };
-  const chooseModel = (item: Store.Model) => {
-    saveOneSettingToLocal("currentModel", item.value);
-    saveOneSettingToLocal("currentDisplayModel", item.label);
-  };
 
   const isScrolledToBottom = () => {
     if (chatListRef.current) {
@@ -187,8 +174,8 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
         },
         body: JSON.stringify({
           model: "gpt-4o-mini",
+          baseUrl: settings.baseUrl,
           key: settings.APIKey,
-          secret: settings.secret,
           historyMsgList: [
             ...historyMsgList,
             {
@@ -196,8 +183,6 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
               content: t.chat.generate_title,
             },
           ],
-          systemPrompt: t.chat.generate_title,
-          baseUrl: settings.baseUrl,
         }),
       });
       if (res.ok) {
@@ -216,7 +201,6 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
     setLoading(true);
     breakStreamRef.current = false;
     let historyMsgList: Global.ChatItem[] = [];
-    const systemPrompt = settings.sysPrompt;
     if (chatList.length > 0) {
       const historyCnt = settings.historyNum;
       historyMsgList = chatList.slice(-historyCnt);
@@ -231,11 +215,8 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
       body: JSON.stringify({
         model: settings.currentModel,
         historyMsgList,
-        temperature: settings.random,
-        systemPrompt,
         key: settings.APIKey,
         baseUrl: settings.baseUrl,
-        secret: settings.secret,
       }),
     });
 
@@ -329,22 +310,22 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
     }
   }
 
-  const sendMessage = async () => {
-    if (content.trim() === "") {
-      return;
-    }
-    const randonId = uuid();
-    downToBottom();
-    const message = {
-      role: "user" as const,
-      content,
-      id: randonId,
-      createdAt: Date.now(),
-    };
-    addMessage(session_id, message);
-    setContent("");
-    streamChat(message);
-  };
+  // const sendMessage = async () => {
+  //   if (content.trim() === "") {
+  //     return;
+  //   }
+  //   const randonId = uuid();
+  //   downToBottom();
+  //   const message = {
+  //     role: "user" as const,
+  //     content,
+  //     id: randonId,
+  //     createdAt: Date.now(),
+  //   };
+  //   addMessage(session_id, message);
+  //   setContent("");
+  //   streamChat(message);
+  // };
 
   return (
     <div>
@@ -417,72 +398,6 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
             >
               <IconProvider.LoadingTag fill="#da8d6d" width={28} height={28} />
             </div>
-          </div>
-        </div>
-        {/* 底部输入框 */}
-        <div className="w-full  gap-3 flex flex-col relative z-10 max-w-[800px] mx-auto">
-          <div
-            className="relative p-5 pb-3 pr-12 bg-white rounded-2xl border-2 border-gray-300 border-b-0 rounded-b-none flex flex-col gap-2"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                if (loading) return;
-                sendMessage();
-              }
-            }}
-          >
-            <div className="w-full">
-              <textarea
-                ref={textareaRef}
-                value={content}
-                onChange={handleEditChange}
-                className="w-full outline-none scrollbar-thin scrollbar-thumb-orange-200 scrollbar-track-transparent resize-none bg-transparent scrollbar"
-                placeholder={t.new.placeholder}
-                rows={1}
-                style={{
-                  minHeight: "24px",
-                  maxHeight: "370px",
-                  overflowY: "auto",
-                }}
-              />
-            </div>
-            <div className="text-sm relative z-10">
-              <div className="">
-                <DropdownMenu
-                  items={settings.models}
-                  callback={(item) => {
-                    chooseModel(item);
-                  }}
-                  width="100px"
-                  position="top"
-                >
-                  {settings.currentDisplayModel}
-                </DropdownMenu>
-              </div>
-            </div>
-          </div>
-          <div
-            className={`absolute right-2 top-3  rounded-lg p-2 cursor-pointer  w-8 h-8 flex items-center justify-center text-white
-              ${
-                loading
-                  ? "border-orange-700/80 !p-0"
-                  : "bg-orange-700/60 hover:bg-orange-700/80"
-              }`}
-            onClick={sendMessage}
-          >
-            {loading ? (
-              <div
-                onClick={() => {
-                  breakStreamRef.current = true;
-                }}
-              >
-                <HintText hintText={t.chat.pause} more={-55}>
-                  <IconProvider.Pause width={24} height={24} fill="#da8d6d" />
-                </HintText>
-              </div>
-            ) : (
-              <ArrowUpOutlined />
-            )}
           </div>
         </div>
       </main>

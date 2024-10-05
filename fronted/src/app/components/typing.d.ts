@@ -9,6 +9,13 @@ declare namespace Slider {
     id: string;
     title: string;
   }
+  interface DatabaseForm {
+    host: string;
+    port: string;
+    db_username: string;
+    db_password: string;
+    database: string;
+  }
 }
 
 declare namespace Comfirm {

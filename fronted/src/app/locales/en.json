@@ -1,5 +1,5 @@
 {
-  "title": "Dlaude",
+  "title": "Chat2SqlGraph",
   "slider": {
     "logo": "Dlaude",
     "new": "New Chat",
@@ -41,7 +41,7 @@
     "placeholder": "Please enter your requirements",
     "file_desc": "using files in chat (Need to configure file upload interface)",
     "file_added": "files added",
-    "upload_desc": "Upload files or images",
+    "upload_desc": "Waiting for later release",
     "upload_file": "Upload",
     "recent_chat": "Recent Chat",
     "expand": "Expand",

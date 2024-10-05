@@ -7,15 +7,13 @@ import {
   ArrowUpOutlined,
   CommentOutlined,
   LinkOutlined,
-  LoadingOutlined,
-  PlusOutlined,
   UpOutlined,
 } from "@ant-design/icons";
 import { v4 as uuid } from "uuid";
 
 import DropdownMenu from "@/app/components/DropDown";
 import HintText from "@/app/components/HintText";
-import { Empty, message, Spin } from "antd";
+import { Empty, App } from "antd";
 import Link from "next/link";
 import {
   useUserStore,
@@ -26,14 +24,12 @@ import {
 export default function NewContent({ t }: { t: Global.Dictionary }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
-  const dragCounter = useRef(0);
+  const { message } = App.useApp();
 
   const [content, setContent] = useState("");
   const [fileList, setFileList] = useState<File[]>([]);
   const [fileUrlList, setFileUrlList] = useState<New.FileItem[]>([]);
-  const [sendFileLoading, setSendFileLoading] = useState(false);
   const [showRecents, setShowRecents] = useState(true);
-  const [isDragging, setIsDragging] = useState(false);
 
   const router = useRouter();
   const { settings, saveOneSettingToLocal } = useSettingStore();
@@ -110,76 +106,11 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
     }
   };
 
-  const uploadFile = async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file, file.name);
-    formData.append("filePostUrl", settings.filePostUrl);
-    formData.append("secret", settings.secret);
-
-    setSendFileLoading(true);
-    try {
-      const response = await fetch("/api/file-server", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setFileUrlList((prev) => [
-          ...prev,
-          { filename: file.name, url: result.data.url },
-        ]);
-      } else {
-        const res = await response.json();
-        setFileList((prev) => prev.filter((f) => f !== file));
-        console.log("文件上传失败", res);
-        message.error(
-          `${file.name} ${t.new.upload_file_error}, ${res.msg.error}`
-        );
-      }
-    } catch (error) {
-      console.error("上传错误:", error);
-      message.error(`${file.name} ${t.new.upload_file_error}`);
-      setFileList((prev) => prev.filter((f) => f !== file));
-    } finally {
-      setSendFileLoading(false);
-    }
-  };
-
-  const handleFiles = async (files: File[]) => {
-    if (files.length + fileList.length > 5) {
-      message.error(t.new.max5);
-      return;
-    }
-
-    for (const file of files) {
-      if (file.size > 1024 * 1024 * settings.maxFileSize) {
-        message.error(
-          `${file.name} ${t.new.max_file_size}: ${settings.maxFileSize}MB`
-        );
-        continue;
-      }
-
-      setFileList((prev) => [...prev, file]);
-      await uploadFile(file);
-    }
-  };
-
-  const onAddFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files);
-      handleFiles(files);
-    }
-  };
-
   const chooseModel = (item: Store.Model) => {
     saveOneSettingToLocal("currentModel", item.value);
     saveOneSettingToLocal("currentDisplayModel", item.label);
   };
 
-  const onRemoveFile = (file: File) => {
-    setFileList((prev) => prev.filter((f) => f !== file));
-  };
 
   useEffect(() => {
     adjustHeight();
@@ -189,68 +120,10 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
     setContent(e.target.value);
   };
 
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounter.current++;
-    console.log("进入：", dragCounter.current);
-    
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-      setIsDragging(true);
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounter.current--;
-    console.log("离开：", dragCounter.current);
-    
-    if (dragCounter.current == 0) {
-      setIsDragging(false);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    dragCounter.current = 0;
-    const files = Array.from(e.dataTransfer.files);
-    handleFiles(files);
-  };
-
   return (
     <>
       <div
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragEnter={handleDragEnter}
-        onDragStart={() => console.log(111)}
-        className={`fixed inset-0 ${
-          isDragging ? "bg-black/30 z-50" : "pointer-events-none"
-        } transition-all duration-300 flex items-center justify-center`}
-      >
-        {isDragging && (
-          <div
-            className="relative bg-gray-300 py-5 px-16 rounded-lg text-center text-gray-700 select-none">
-            <LoadingOutlined spin className="text-5xl text-blue-500 mb-4" />
-            <p className="text-lg font-semibold text-gray-700">
-              {t.new.release_to_upload}
-            </p>
-          </div>
-        )}
-      </div>
-      <div
         className={`relative mx-auto h-full w-full max-w-3xl flex-1 l md:px-2 px-4 pb-20 md:pl-8 lg:mt-6 min-h-screen-w-scroll !mt-0 flex flex-col items-center gap-8 pt-12 md:pr-14 2xl:pr-20 `}
-        onDragEnter={(e) => {handleDragEnter(e); dragCounter.current--}}
       >
         {/* 使用免费计划 */}
         <div className="text-sm text-gray-500 p-2 rounded-full bg-orange-200/50 border border-orange-300">
@@ -285,7 +158,7 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
                 style={{ minHeight: "50px", maxHeight: "360px" }} // 设置一个最小高度
               />
             </div>
-            <div className="text-sm relative z-10">
+            <div className="text-sm relative z-10 flex gap-2">
               <div className="">
                 <DropdownMenu
                   items={settings.models}
@@ -294,6 +167,9 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
                 >
                   {settings.currentDisplayModel}
                 </DropdownMenu>
+              </div>
+              <div className="cursor-pointer h-[30px] flex items-center justify-center px-2 rounded-md border border-gray-300">
+                数据源选择
               </div>
             </div>
           </div>
@@ -320,72 +196,12 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
                   className={`text-sm text-gray-500 font-bold cursor-pointer hover:bg-gray-800/10 rounded-lg p-2 flex items-center justify-center
 						gap-1`}
                   onClick={() => {
-                    document.querySelector("input")?.click();
+                    message.warning("等待后续开放");
                   }}
                 >
                   <LinkOutlined className="text-lg" /> {t.new.upload_file}
-                  <input
-                    type="file"
-                    className="hidden"
-                    multiple
-                    onChange={(e) => onAddFile(e)}
-                  />
                 </div>
               </HintText>
-            </div>
-            <div className="p-2 pt-0 grid grid-cols-5 relative scrollbar pb-3 gap-3">
-              {fileList.map((file, index) => {
-                const fullFilename = file.name;
-                const fileExt = fullFilename.split(".").pop();
-                const fileName = fullFilename.split(".").slice(0, -1).join(".");
-                return (
-                  <div key={fullFilename} className="flex-shrink-0">
-                    <HintText hintText={fullFilename} more={5}>
-                      <Spin
-                        spinning={
-                          sendFileLoading && index === fileList.length - 1
-                        }
-                        indicator={<LoadingOutlined spin />}
-                      >
-                        <div
-                          className={`h-20 cursor-pointer relative w-full p-2 rounded-lg text-md text-gray-700 flex items-center justify-center hover:border hover:border-blue-300
-										 drop-shadow-md shadow-blue-400`}
-                          style={{
-                            background:
-                              "linear-gradient(to bottom, white, #e6f7ff)",
-                          }}
-                        >
-                          {isImg(fullFilename) &&
-                          !(sendFileLoading && index == fileList.length - 1) ? (
-                            <img
-                              src={fileUrlList[index].url}
-                              alt={fileName}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="font-bold text-blue-500/80 truncate -translate-y-1">
-                              {fileName}
-                            </div>
-                          )}
-                          <div
-                            className={`absolute -bottom-2 bg-blue-500/90 drop-shadow-lg shadow-blue-400 h-5 rounded-lg px-3 py-1
-											 text-white justify-center items-center flex font-bold text-xs`}
-                          >
-                            {fileExt}
-                          </div>
-                          <div
-                            className={`absolute -top-2 -left-2 w-5 h-5 p-1  bg-orange-200 flex items-center justify-center text-gray-500 rounded-full border border-gray-300
-												hover:bg-orange-700 hover:text-white transition-all duration-300 rotate-45 font-bold`}
-                            onClick={() => onRemoveFile(file)}
-                          >
-                            <PlusOutlined />
-                          </div>
-                        </div>
-                      </Spin>
-                    </HintText>
-                  </div>
-                );
-              })}
             </div>
           </div>
         </div>

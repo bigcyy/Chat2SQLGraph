@@ -2,14 +2,31 @@ import React, { useState } from "react";
 import MarkdownRenderer from "./MarkdownRenderer";
 import HintText from "./HintText";
 import { IconProvider } from "./IconProvider";
-import { Tag } from "antd";
-import { CheckOutlined, CopyOutlined } from "@ant-design/icons";
+import { Input, Tag } from "antd";
+import {
+  ArrowUpOutlined,
+  CheckOutlined,
+  CopyOutlined,
+  EditOutlined,
+} from "@ant-design/icons";
 
 export default function AssistantMsg({ content }: { content: string }) {
   const [showMarkdown, setShowMarkdown] = useState(true);
-  const [showTools, setShowTools] = useState(false);
+  const [showTools, setShowTools] = useState(true);
   const [copyIcon, setCopyIcon] = useState(<CopyOutlined className="h-5" />);
+  const [showEdit, setShowEdit] = useState(false);
+  const [innerContent, setInnerContent] = useState(content);
+
   const toolsList = [
+    {
+      name: "修改",
+      icon: (
+        <Tag className="!mr-0 !justify-center !items-center">
+          <EditOutlined />
+        </Tag>
+      ),
+      onClick: () => setShowEdit(!showEdit),
+    },
     {
       name: showMarkdown ? "显示原文" : "显示转义",
       icon: (
@@ -22,13 +39,11 @@ export default function AssistantMsg({ content }: { content: string }) {
     {
       name: "复制",
       icon: (
-        <Tag className="!mr-0 !justify-center !items-center">
-          {copyIcon}
-        </Tag>
+        <Tag className="!mr-0 !justify-center !items-center">{copyIcon}</Tag>
       ),
       onClick: async () => {
         navigator.clipboard
-          .writeText(content)
+          .writeText(innerContent)
           .then(() => {
             setCopyIcon(<CheckOutlined className="h-5" />);
             setTimeout(() => {
@@ -40,6 +55,11 @@ export default function AssistantMsg({ content }: { content: string }) {
     },
   ];
 
+  const resendMsg = () => {
+    console.log("resendMsg");
+    setShowEdit(false);
+  };
+
   return (
     <div className="w-full">
       <div
@@ -47,17 +67,43 @@ export default function AssistantMsg({ content }: { content: string }) {
         onMouseEnter={() => setShowTools(true)}
         onMouseLeave={() => setShowTools(false)}
       >
-        <div className="flex flex-col items-start bg-gradient-to-b from-[#f8f7f5] to-[#f6f6f2] rounded-lg p-2 gap-3 px-3 relative max-w-full border border-white/50">
+        <div
+          className={`flex flex-col items-start bg-gradient-to-b from-[#f8f7f5] to-[#f6f6f2] rounded-lg  gap-3  relative max-w-full border border-white/50
+          ${showEdit ? "w-full p-1" : "w-fit px-3 p-2"}
+          `}
+        >
           <div className="markdown-content border-slate-400 rounded-lg overflow-hidden break-words text-slate-800 w-full">
             {showMarkdown ? (
-              <MarkdownRenderer content={content} />
+              !showEdit ? (
+                <MarkdownRenderer content={innerContent} />
+              ) : (
+                <div className="scrollbar p-1 max-w-full flex flex-col gap-2 relative w-full pr-8">
+                  <Input.TextArea
+                    className="scrollbar "
+                    autoSize={{ minRows: 1, maxRows: 5 }}
+                    value={innerContent}
+                    onChange={(e) => setInnerContent(e.target.value)}
+                    // onChange={(e) => setContent(e.target.value)}
+                  />
+                  <div
+                    className="absolute right-1 top-1 bg-orange-700/60 rounded-lg p-2 cursor-pointer hover:bg-orange-700/80 w-6 h-6 flex items-center justify-center text-white"
+                    onClick={resendMsg}
+                  >
+                    <ArrowUpOutlined />
+                  </div>
+                </div>
+              )
             ) : (
-              <pre className="whitespace-pre-wrap">{content}</pre>
+              <pre className="whitespace-pre-wrap">{innerContent}</pre>
             )}
           </div>
           <div
-            className={`flex absolute -bottom-7 -right-5 h-30 w-20 transition-opacity duration-100
-            ${showTools ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+            className={`flex absolute -bottom-7 -right-5 h-30 w-[112px] transition-opacity duration-100
+            ${
+              showTools
+                ? "opacity-100 pointer-events-auto"
+                : "opacity-0 pointer-events-none"
+            }`}
           >
             {toolsList.map((tool) => (
               <HintText hintText={tool.name} more={-60} key={tool.name}>

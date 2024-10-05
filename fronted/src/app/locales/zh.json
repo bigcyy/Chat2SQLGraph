@@ -1,5 +1,5 @@
 {
-  "title": "Dlaude",
+  "title": "Chat2SqlGraph",
   "slider": {
     "logo": "Dlaude",
     "new": "开启新对话",
@@ -41,7 +41,7 @@
     "placeholder": "请输入你的需求",
     "file_desc": "使用文档、图片等(需配置文件上传接口)",
     "file_added": "个文件已添加",
-    "upload_desc": "上传文件或者图片",
+    "upload_desc": "等待后续开放",
     "upload_file": "上传文件",
     "recent_chat": "最近对话",
     "expand": "展开",
