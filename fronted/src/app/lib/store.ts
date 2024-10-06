@@ -78,13 +78,17 @@ export const useSettingStore = create<Store.SettingState & Store.SettingAction>(
 export const useUserStore = create<Store.UserState & Store.UserAction>(
   (set) => ({
     user: {
-      email: "bashirian76100@gmail.com",
+      id: -1,
+      email: "",
       avatar: "https://avatars.githubusercontent.com/u/71807854?s=8100&v=4",
-      name: "ClaudeImitate",
+      name: "",
     },
 
     setUserToLocal: (user: Store.User) => {
       localStorage.setItem("user", JSON.stringify(user));
+      set((state) => ({ user: { ...state.user, ...user } }));
+    },
+    setUser: (user: Store.User) => {
       set((state) => ({ user: { ...state.user, ...user } }));
     },
     setOneUserInfoToLocal: (
@@ -97,10 +101,10 @@ export const useUserStore = create<Store.UserState & Store.UserAction>(
         return { user: newUser };
       });
     },
-    getUserFromLocal: () => {
+    getUserAvatarFromLocal: () => {
       const user = localStorage.getItem("user");
       if (user) {
-        set((state) => ({ user: { ...state.user, ...JSON.parse(user) } }));
+        set((state) => ({ ...state, ...JSON.parse(user) }));
       }
     },
   })

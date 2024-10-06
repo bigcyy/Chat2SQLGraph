@@ -1,79 +1,32 @@
 import {
   LockOutlined,
   MailOutlined,
-  SafetyOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Button, Form, Input, Space } from "antd";
-import React, { useState } from "react";
+import { Button, Form, Input } from "antd";
+import React from "react";
 
 export default function Register({
   form,
   onRegister,
-  sendVerificationCode,
   t,
 }: Login.RegisterProps) {
-  const [sendingCode, setSendingCode] = useState(false);
-  const [countdown, setCountdown] = useState(0);
-
-  const onEmailSend = () => {
-    sendVerificationCode(form.getFieldValue("email"));
-    setSendingCode(true);
-    setCountdown(10);
-    const interval = setInterval(() => {
-      setCountdown((prevCountdown) => {
-        if (prevCountdown <= 0) {
-          setSendingCode(false);
-          clearInterval(interval);
-          return 0;
-        }
-        return prevCountdown - 1;
-      });
-    }, 1000);
-  };
-
   return (
     <div>
       <Form name="register" onFinish={onRegister} form={form}>
         <Form.Item
-          name="username"
+          name="nickname"
           rules={[{ required: true, message: t.login.nickname_required }]}
         >
           <Input prefix={<UserOutlined />} placeholder={t.login.nickname} />
         </Form.Item>
         <Form.Item
-          name="email"
+          name="username"
           rules={[
-            { required: true, type: "email", message: t.login.email_required },
+            { required: true, message: t.login.username_required },
           ]}
         >
-          <Input prefix={<MailOutlined />} placeholder={t.login.email} />
-        </Form.Item>
-        <Form.Item>
-          <Space.Compact style={{ width: "100%" }}>
-            <Form.Item
-              name="verificationCode"
-              noStyle
-              rules={[
-                { required: true, message: t.login.verification_code_required },
-              ]}
-            >
-              <Input
-                prefix={<SafetyOutlined />}
-                style={{ width: "calc(100% - 120px)" }}
-                placeholder={t.login.verification_code}
-              />
-            </Form.Item>
-            <Button
-              style={{ width: "120px" }}
-              disabled={sendingCode || countdown > 0}
-              onClick={onEmailSend}
-            >
-              {countdown > 0
-                ? `${countdown} ${t.login.seconds_resend}`
-                : t.login.send_code}
-            </Button>
-          </Space.Compact>
+          <Input prefix={<MailOutlined />} placeholder={t.login.username} />
         </Form.Item>
         <Form.Item
           name="password"
@@ -85,7 +38,7 @@ export default function Register({
           />
         </Form.Item>
         <Form.Item
-          name="confirmPassword"
+          name="re_password"
           dependencies={["password"]}
           rules={[
             { required: true, message: t.login.confirm_password_required },

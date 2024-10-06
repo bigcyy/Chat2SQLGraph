@@ -100,6 +100,8 @@
     "seconds_resend": "秒后重发",
     "back_to_login": "返回登录",
     "nickname": "昵称",
-    "nickname_required": "请输入你的昵称"
+    "nickname_required": "请输入你的昵称",
+    "username": "用户名",
+    "username_required": "请输入你的用户名"
   }
 }

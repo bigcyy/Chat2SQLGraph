@@ -100,6 +100,8 @@
     "seconds_resend": "seconds",
     "back_to_login": "Back to Login",
     "nickname": "Nickname",
-    "nickname_required": "Please enter your nickname"
+    "username": "Username",
+    "nickname_required": "Please enter your nickname",
+    "username_required": "Please enter your username"
   }
 }

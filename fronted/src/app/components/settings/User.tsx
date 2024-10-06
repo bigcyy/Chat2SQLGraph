@@ -74,7 +74,7 @@ export default function User({ t }: { t: Global.Dictionary }) {
               className={`w-20 h-20 rounded-full overflow-hidden cursor-pointer relative group`}
               onClick={() => inputRef.current?.click()}
             >
-              <Image src={user.avatar} width={80} height={80} alt={"头像"} className="object-cover w-full h-full"/>
+              <Image src={user.avatar!} width={80} height={80} alt={"头像"} className="object-cover w-full h-full"/>
               <div
                 className={`absolute inset-0 z-10 flex items-center justify-center text-2xl bg-black/30 
                 text-gray-200 group-hover:opacity-100 opacity-0 transition-opacity duration-300`}

@@ -1,6 +1,7 @@
 "use client";
 import {
   ArrowRightOutlined,
+  BlockOutlined,
   CloseOutlined,
   DownOutlined,
   GithubOutlined,
@@ -45,9 +46,7 @@ export default function Slider({ t }: Slider.SlideProps) {
   const titleRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLDivElement>(null);
 
-  
-
-  const { user, getUserFromLocal } = useUserStore();
+  const { user, getUserAvatarFromLocal } = useUserStore();
   const { getSettingFromLocal } = useSettingStore();
   const { chatData, getSessionFromLocal, getReversedChatData } =
     useSessionStore();
@@ -96,7 +95,7 @@ export default function Slider({ t }: Slider.SlideProps) {
     const isPinned = localStorage.getItem("isPinned");
     getSessionFromLocal();
     getSettingFromLocal();
-    getUserFromLocal();
+    getUserAvatarFromLocal();
     if (isPinned === "true") {
       setIsPinned(true);
     } else {
@@ -229,74 +228,102 @@ export default function Slider({ t }: Slider.SlideProps) {
               </Link>
             </div>
             {/* 从这里开始对话历史到底部 */}
-            <div className="flex flex-col gap-2 justify-between flex-1">
+            <div className="flex flex-col gap-2 justify-between flex-1 duration-300 transition-all">
               {/* 这里是数据库信息 */}
               <div className={`${showHistory ? "" : "flex-1"} flex flex-col`}>
                 <div
                   className="font-bold mb-3 relative group flex justify-between cursor-pointer"
                   onClick={() => setShowHistory(!showHistory)}
                 >
-                  <span>数据库配置</span>
+                  <span>数据源配置</span>
                   <div className="cursor-pointer">
                     <DownOutlined
                       className={`${showHistory ? "rotate-180" : ""}`}
                     />
                   </div>
                 </div>
-                <Form
-                  form={databaseForm}
-                  onFinish={onSubmitDatabase}
-                  layout="vertical"
-                  className={`flex flex-col gap-2 ${
-                    showHistory ? "hidden" : ""
+                <div
+                  className={`flex flex-col gap-2 overflow-hidden ${
+                    showHistory ? "max-h-0" : ""
                   }`}
                 >
-                  <div className="flex w-full gap-1">
+                  <Form
+                    form={databaseForm}
+                    onFinish={onSubmitDatabase}
+                    layout="vertical"
+                    className={`flex flex-col gap-2 overflow-hidden`}
+                  >
                     <Form.Item
                       className="!m-0 flex-3"
-                      name="host"
-                      rules={[{ required: true, message: "请输入数据库地址" }]}
+                      name="alias"
+                      rules={[{ required: true, message: "请输入数据库别名" }]}
                     >
-                      <Input placeholder="数据库地址" />
+                      <Input placeholder="数据库别名（显示名称）" />
                     </Form.Item>
-                    <Form.Item
-                      className="!m-0 flex-1"
-                      name="port"
-                      rules={[{ required: true, message: "请输入端口" }]}
-                    >
-                      <Input placeholder="端口" />
-                    </Form.Item>
-                  </div>
+                    <div className="flex w-full gap-1">
+                      <Form.Item
+                        className="!m-0 flex-3"
+                        name="host"
+                        rules={[
+                          { required: true, message: "请输入数据库地址" },
+                        ]}
+                      >
+                        <Input placeholder="数据库地址" />
+                      </Form.Item>
+                      <Form.Item
+                        className="!m-0 flex-1"
+                        name="port"
+                        rules={[{ required: true, message: "请输入端口" }]}
+                      >
+                        <Input placeholder="端口" />
+                      </Form.Item>
+                    </div>
 
-                  <Form.Item
-                    className="!m-0"
-                    name="db_username"
-                    rules={[{ required: true, message: "请输入数据库用户名" }]}
-                  >
-                    <Input placeholder="请输入数据库用户名" />
-                  </Form.Item>
-                  <Form.Item
-                    className="!m-0"
-                    name="db_password"
-                    rules={[{ required: true, message: "请输入数据库密码" }]}
-                  >
-                    <Input.Password placeholder="请输入数据库密码" />
-                  </Form.Item>
-                  <div className="flex w-full gap-1">
                     <Form.Item
-                      className="!m-0 flex-3"
-                      name="database"
-                      rules={[{ required: true, message: "请输入数据库名称" }]}
+                      className="!m-0"
+                      name="db_username"
+                      rules={[
+                        { required: true, message: "请输入数据库用户名" },
+                      ]}
                     >
-                      <Input placeholder="请输入数据库名称" />
+                      <Input placeholder="请输入数据库用户名" />
                     </Form.Item>
-                    <Form.Item className="!m-0 flex-1">
-                      <Button type="primary" htmlType="submit" block>
-                        连接
-                      </Button>
+                    <Form.Item
+                      className="!m-0"
+                      name="db_password"
+                      rules={[{ required: true, message: "请输入数据库密码" }]}
+                    >
+                      <Input.Password placeholder="请输入数据库密码" />
                     </Form.Item>
+                    <div className="flex w-full gap-1">
+                      <Form.Item
+                        className="!m-0 flex-3"
+                        name="database"
+                        rules={[
+                          { required: true, message: "请输入数据库名称" },
+                        ]}
+                      >
+                        <Input placeholder="请输入数据库名称" />
+                      </Form.Item>
+                      <Form.Item className="!m-0 flex-1">
+                        <Button type="primary" htmlType="submit" block>
+                          添加
+                        </Button>
+                      </Form.Item>
+                    </div>
+                  </Form>
+                  <div className="mb-3 relative group cursor-pointer mt-5">
+                    <span className="text-gray-950">已添加的数据源</span>
+                    <div className="flex flex-col text-sm overflow-y-auto scrollbar gap-1">
+                      <div className="hover:bg-amber-800/10 rounded-md p-1 cursor-pointer flex items-center relative group">
+                      <BlockOutlined />
+                        <span className="text-ellipsis overflow-hidden whitespace-nowrap ml-1 mr-1 flex-1 text-gray-600">
+                          vchrdufiv
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </Form>
+                </div>
               </div>
               <div className={`${showHistory ? "flex-1" : ""}`}>
                 {/* 对话历史 */}
@@ -314,7 +341,7 @@ export default function Slider({ t }: Slider.SlideProps) {
                 </div>
                 <div
                   className={`flex flex-col text-sm overflow-y-auto scrollbar gap-1
-                    ${showHistory ? "flex-1" : "hidden"}`}
+                    ${showHistory ? "flex-1" : "max-h-0"}`}
                   // style={{ height: "calc(100vh - 15rem)" }}
                 >
                   {chatData.length == 0 && (
@@ -369,7 +396,7 @@ export default function Slider({ t }: Slider.SlideProps) {
                       <Image
                         width={24}
                         height={24}
-                        src={user.avatar}
+                        src={user.avatar!}
                         alt={t.slider.avatar}
                         className="object-cover w-full h-full rounded-full"
                       />
@@ -441,7 +468,7 @@ export default function Slider({ t }: Slider.SlideProps) {
               <Image
                 width={24}
                 height={24}
-                src={user.avatar}
+                src={user.avatar!}
                 alt={t.slider.avatar}
                 className="object-cover w-full h-full rounded-full"
               />

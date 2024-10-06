@@ -13,13 +13,28 @@ import { v4 as uuid } from "uuid";
 
 import DropdownMenu from "@/app/components/DropDown";
 import HintText from "@/app/components/HintText";
-import { Empty, App } from "antd";
+import { Empty, App, Modal, Checkbox, Divider } from "antd";
 import Link from "next/link";
 import {
   useUserStore,
   useSettingStore,
   useSessionStore,
 } from "@/app/lib/store";
+import { getUserInfo, refreshToken } from "@/app/http/api";
+import { CheckboxChangeEvent } from "antd/es/checkbox";
+
+const plainOptions = [
+  "用户信息表",
+  "订单记录表",
+  "产品目录表",
+  "库存管理表",
+  "客户反馈表",
+  "员工档案表",
+  "销售报表",
+  "供应商信息表",
+  "财务流水表",
+  "市场营销表",
+];
 
 export default function NewContent({ t }: { t: Global.Dictionary }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -30,11 +45,17 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
   const [fileList, setFileList] = useState<File[]>([]);
   const [fileUrlList, setFileUrlList] = useState<New.FileItem[]>([]);
   const [showRecents, setShowRecents] = useState(true);
+  const [isSelectOpen, setIsSelectOpen] = useState(false);
+  const [selectedList, setSelectedList] = useState<string[]>(plainOptions);
 
   const router = useRouter();
   const { settings, saveOneSettingToLocal } = useSettingStore();
-  const { user } = useUserStore();
+  const { user, setUser } = useUserStore();
   const { chatData, addSession, addMessage, setCurMsg } = useSessionStore();
+
+  const checkAllTbale = plainOptions.length === selectedList.length;
+  const indeterminate =
+    selectedList.length > 0 && selectedList.length < plainOptions.length;
 
   const adjustHeight = () => {
     const textarea = textareaRef.current;
@@ -49,6 +70,26 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
       }
     }
   };
+
+  useEffect(() => {
+    adjustHeight();
+    if (localStorage.getItem("token") && localStorage.getItem("token") !== "") {
+      getUserInfo().then(({ data }) => {
+        if (data.code === 200) {
+          setUser({
+            id: data.data.user_id,
+            email: data.data.username,
+            name: data.data.nickname,
+          });
+          refreshToken().then(({ data }) => {
+            localStorage.setItem("token", data.data);
+          });
+        }
+      });
+    } else {
+      router.push("/login");
+    }
+  }, [content]);
 
   const isImg = (filename: string) => {
     const imgExt = ["png", "jpg", "jpeg", "gif", "bmp", "webp"];
@@ -111,13 +152,16 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
     saveOneSettingToLocal("currentDisplayModel", item.label);
   };
 
-
-  useEffect(() => {
-    adjustHeight();
-  }, [content]);
-
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
+  };
+
+  const onSelectTable = (list: string[]) => {
+    setSelectedList(list);
+  };
+
+  const onCheckAllTableChange = (e: CheckboxChangeEvent) => {
+    setSelectedList(e.target.checked ? plainOptions : []);
   };
 
   return (
@@ -168,8 +212,11 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
                   {settings.currentDisplayModel}
                 </DropdownMenu>
               </div>
-              <div className="cursor-pointer h-[30px] flex items-center justify-center px-2 rounded-md border border-gray-300">
-                数据源选择
+              <div
+                className="cursor-pointer h-[30px] flex items-center justify-center px-2 rounded-md border border-gray-300"
+                onClick={() => setIsSelectOpen(true)}
+              >
+                数据选择
               </div>
             </div>
           </div>
@@ -276,6 +323,30 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
           </div>
         </div>
       </div>
+      <Modal
+        open={isSelectOpen}
+        onCancel={() => setIsSelectOpen(false)}
+        onOk={() => setIsSelectOpen(false)}
+        okText={t.confirm.yes}
+        cancelText={t.confirm.no}
+        closable={false}
+        centered
+        
+      >
+        <Checkbox
+          indeterminate={indeterminate}
+          onChange={onCheckAllTableChange}
+          checked={checkAllTbale}
+        >
+          全选
+        </Checkbox>
+        <Divider />
+        <Checkbox.Group
+          options={plainOptions}
+          value={selectedList}
+          onChange={onSelectTable}
+        />
+      </Modal>
     </>
   );
 }

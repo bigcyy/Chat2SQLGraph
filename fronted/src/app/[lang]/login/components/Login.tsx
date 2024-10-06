@@ -2,12 +2,12 @@ import { LockOutlined, MailOutlined } from "@ant-design/icons";
 import { Button, Form, Input } from "antd";
 import React from "react";
 
-export default function Login({ form, setActiveTab, onLogin, t }: Login.LoginProps) {
+export default function Login({ form, onLogin, t }: Login.LoginProps) {
   return (
     <div>
       <Form name="login" onFinish={onLogin} form={form}>
         <Form.Item
-          name="email"
+          name="username"
           rules={[
             { required: true, message: t.login.email_required },
           ]}
@@ -25,9 +25,6 @@ export default function Login({ form, setActiveTab, onLogin, t }: Login.LoginPro
             {t.login.login}
           </Button>
         </Form.Item>
-        <Button type="link" onClick={() => setActiveTab("forgotPassword")}>
-          {t.login.forgot_password}
-        </Button>
       </Form>
     </div>
   );

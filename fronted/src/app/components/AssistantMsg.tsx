@@ -12,7 +12,7 @@ import {
 
 export default function AssistantMsg({ content }: { content: string }) {
   const [showMarkdown, setShowMarkdown] = useState(true);
-  const [showTools, setShowTools] = useState(true);
+  const [showTools, setShowTools] = useState(false);
   const [copyIcon, setCopyIcon] = useState(<CopyOutlined className="h-5" />);
   const [showEdit, setShowEdit] = useState(false);
   const [innerContent, setInnerContent] = useState(content);

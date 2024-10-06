@@ -3,7 +3,7 @@
 import axios, { InternalAxiosRequestConfig } from "axios";
 
 const instance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000",
+  // baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000",
   timeout: 10000, // 请求超时时间设置为 10 秒
   headers: {
     "Content-Type": "application/json",
@@ -13,16 +13,18 @@ const instance = axios.create({
 
 // 请求拦截器
 instance.interceptors.request.use(
-  (config: InternalAxiosRequestConfig & { skipAuth?: boolean }) => {
-    // 检查是否需要跳过 Authorization
-    if (config.skipAuth) {
-      return config;
-    }
+  (config: InternalAxiosRequestConfig) => {
+    // 定义不需要 token 的路由列表
+    const noTokenRequired = ['/api/user/register', '/api/user/login'];
 
-    const token = localStorage.getItem("token");
-    if (token) {
-      config.headers["Authorization"] = `Bearer ${token}`;
+    // 检查当前请求的 URL 是否在不需要 token 的列表中
+    if (!noTokenRequired.includes(config.url || '')) {
+      const token = localStorage.getItem("token");
+      if (token) {
+        config.headers["Authorization"] = `${token}`;
+      }
     }
+    
     return config;
   },
   (error) => {
@@ -34,7 +36,7 @@ instance.interceptors.request.use(
 instance.interceptors.response.use(
   (response) => {
     // 对响应数据做点什么
-    return response.data;
+    return response;
   },
   (error) => {
     // 对响应错误做点什么

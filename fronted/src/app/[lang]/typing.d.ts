@@ -46,7 +46,6 @@ declare namespace New {
 }
 
 declare namespace Chat {
-  
   interface ChatContentProps {
     t: Global.Dictionary;
   }
@@ -58,42 +57,28 @@ declare namespace Login {
   }
 
   interface LoginFrom {
-    email: string;
+    username: string;
     password: string;
   }
   interface RegisterFrom {
+    nickname: string;
     username: string;
-    email: string;
     password: string;
-    code: string;
-  }
-  interface ResetPasswordFrom {
-    email: string;
-    password: string;
-    code: string;
+    re_password: string;
   }
 
   interface LoginProps {
     form: FormInstance<LoginFrom>;
-    setActiveTab: (tab: string) => void;
     onLogin: (values: LoginFrom) => void;
     t: Global.Dictionary;
   }
   interface RegisterProps {
     form: FormInstance<RegisterFrom>;
     onRegister: (values: RegisterFrom) => void;
-    sendVerificationCode: (email: string) => void;
-    t: Global.Dictionary;
-  }
-  interface ResetPasswordProps {
-    form: FormInstance<ResetPasswordFrom>;
-    onResetPassword: (values: ResetPasswordFrom) => void;
-    sendVerificationCode: (email: string) => void;
-    setActiveTab: (tab: string) => void;
     t: Global.Dictionary;
   }
 }
-
+  
 declare namespace Store {
   interface Model {
     label: string; // 显示的名称
@@ -114,21 +99,29 @@ declare namespace Store {
   interface SettingAction {
     getSettingFromLocal: () => void;
     saveSettingsToLocal: (setting: Setting) => void;
-    saveOneSettingToLocal: <K extends keyof Setting>(key: K, value: Setting[K]) => void;
+    saveOneSettingToLocal: <K extends keyof Setting>(
+      key: K,
+      value: Setting[K]
+    ) => void;
   }
 
   interface User {
+    id: number;
     email: string;
-    avatar: string;
+    avatar?: string;
     name: string;
   }
   interface UserState {
     user: User;
   }
   interface UserAction {
+    setUser: (user: User) => void;
     setUserToLocal: (user: User) => void;
-    getUserFromLocal: () => void;
-    setOneUserInfoToLocal: <K extends keyof User>(key: K, value: User[K]) => void;
+    getUserAvatarFromLocal: () => void;
+    setOneUserInfoToLocal: <K extends keyof User>(
+      key: K,
+      value: User[K]
+    ) => void;
   }
 
   interface Session {
@@ -152,5 +145,36 @@ declare namespace Store {
     getSessionById: (id: string) => Session | undefined;
     getReversedChatData: () => Session[];
     renameSession: (id: string, title: string) => void;
+  }
+}
+
+declare namespace API {
+  interface LoginForm {
+    username: string;
+    password: string;
+  }
+  interface RegisterFrom {
+    nickname: string;
+    username: string;
+    password: string;
+    re_password: string;
+  }
+  interface DataSource {
+    datasource_name: string;
+    database_name: string;
+    url: string;
+    port: string;
+    username: string;
+    password: string;
+  }
+
+  interface TableInfo {
+    name: string;
+    ddl: string;
+    model_id: string;
+  }
+  interface TbaleNameList {
+    table_name_list: string[];
+    model_id: number;
   }
 }
