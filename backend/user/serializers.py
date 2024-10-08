@@ -58,19 +58,11 @@ class RegisterSerializer(serializers.Serializer):
                                      max_length=20,
                                      min_length=6,
                                      )
-    password = serializers.CharField(required=True, error_messages=ErrMessage.char("密码"),
-                                     validators=[validators.RegexValidator(regex=re.compile(
-                                         "^(?![a-zA-Z]+$)(?![A-Z0-9]+$)(?![A-Z_!@#$%^&*`~.()-+=]+$)(?![a-z0-9]+$)(?![a-z_!@#$%^&*`~()-+=]+$)"
-                                         "(?![0-9_!@#$%^&*`~()-+=]+$)[a-zA-Z0-9_!@#$%^&*`~.()-+=]{6,20}$")
-                                         , message="密码长度6-20个字符，必须字母、数字、特殊字符组合")])
+    password = serializers.CharField(required=True, error_messages=ErrMessage.char("密码"),min_length=6,max_length=20)
 
     re_password = serializers.CharField(required=True,
                                         error_messages=ErrMessage.char("确认密码"),
-                                        validators=[validators.RegexValidator(regex=re.compile(
-                                            "^(?![a-zA-Z]+$)(?![A-Z0-9]+$)(?![A-Z_!@#$%^&*`~.()-+=]+$)(?![a-z0-9]+$)(?![a-z_!@#$%^&*`~()-+=]+$)"
-                                            "(?![0-9_!@#$%^&*`~()-+=]+$)[a-zA-Z0-9_!@#$%^&*`~.()-+=]{6,20}$")
-                                            , message="确认密码长度6-20个字符，必须字母、数字、特殊字符组合")])
-
+                                        min_length=6,max_length=20)
 
     class Meta:
         model = User
@@ -96,7 +88,8 @@ class RegisterSerializer(serializers.Serializer):
         m.set_password(self.data.get("password"))
         # 插入用户
         m.save()
-        return m.id
+        # 返回jwt
+        return generate_jwt_token(m.id)
 
     def get_jwt_token(self):
         # return generate_jwt_token(self.data.get("username"))
