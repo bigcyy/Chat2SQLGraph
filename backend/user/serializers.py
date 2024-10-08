@@ -88,7 +88,8 @@ class RegisterSerializer(serializers.Serializer):
         m.set_password(self.data.get("password"))
         # 插入用户
         m.save()
-        return m.id
+        # 返回jwt
+        return generate_jwt_token(m.id)
 
     def get_jwt_token(self):
         # return generate_jwt_token(self.data.get("username"))
