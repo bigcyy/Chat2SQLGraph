@@ -397,7 +397,18 @@ class ModelSerializer(serializers.ModelSerializer):
                 }
             )
             m.save()    
-            return m.id
+            return self.to_dict(m)
+        
+        def to_dict(self,model):
+            return {
+                'id': model.id,
+                'name': model.name,
+                'model_name': model.model_name,
+                'api_key': rsa_util.decrypt(model.api_key),
+                'base_url': model.base_url,
+                'provider': model.provider,
+                'created_at': model.created_at,
+            }
     class Remove(serializers.ModelSerializer):
         model_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("模型 id"))
         user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("创建人"))
