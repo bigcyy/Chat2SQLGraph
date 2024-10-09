@@ -13,12 +13,13 @@ import { v4 as uuid } from "uuid";
 
 import DropdownMenu from "@/app/components/DropDown";
 import HintText from "@/app/components/HintText";
-import { Empty, App, Modal, Checkbox, Divider } from "antd";
+import { Empty, App, Modal, Checkbox, Divider, Select } from "antd";
 import Link from "next/link";
 import {
   useUserStore,
   useSettingStore,
   useSessionStore,
+  useDatasourceStore,
 } from "@/app/lib/store";
 import { getUserInfo, refreshToken } from "@/app/http/api";
 import { CheckboxChangeEvent } from "antd/es/checkbox";
@@ -47,11 +48,14 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
   const [showRecents, setShowRecents] = useState(true);
   const [isSelectOpen, setIsSelectOpen] = useState(false);
   const [selectedList, setSelectedList] = useState<string[]>(plainOptions);
+  const [tableInfo, setTableInfo] = useState<API.TableInfo[]>([]);
 
   const router = useRouter();
   const { settings, saveOneSettingToLocal } = useSettingStore();
   const { user, setUser } = useUserStore();
   const { chatData, addSession, addMessage, setCurMsg } = useSessionStore();
+  const { datasource, selectedDatasource, setSelectedDatasource } =
+    useDatasourceStore();
 
   const checkAllTbale = plainOptions.length === selectedList.length;
   const indeterminate =
@@ -74,18 +78,24 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
   useEffect(() => {
     adjustHeight();
     if (localStorage.getItem("token") && localStorage.getItem("token") !== "") {
-      getUserInfo().then(({ data }) => {
-        if (data.code === 200) {
-          setUser({
-            id: data.data.user_id,
-            email: data.data.username,
-            name: data.data.nickname,
-          });
-          refreshToken().then(({ data }) => {
-            localStorage.setItem("token", data.data);
-          });
-        }
-      });
+      getUserInfo()
+        .then(({ data }) => {
+          if (data.code === 200) {
+            setUser({
+              id: data.data.user_id,
+              email: data.data.username,
+              name: data.data.nickname,
+            });
+            refreshToken().then(({ data }) => {
+              localStorage.setItem("token", data.data);
+            });
+          } else {
+            router.push("/login");
+          }
+        })
+        .catch((e) => {
+          router.push("/login");
+        });
     } else {
       router.push("/login");
     }
@@ -164,6 +174,10 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
     setSelectedList(e.target.checked ? plainOptions : []);
   };
 
+  const handleChangeDatasource = (value: string) => {
+    setSelectedDatasource(datasource.find((item) => item.id?.toString() === value)!);
+  };
+
   return (
     <>
       <div
@@ -171,10 +185,7 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
       >
         {/* 使用免费计划 */}
         <div className="text-sm text-gray-500 p-2 rounded-full bg-orange-200/50 border border-orange-300">
-          {t.new.using}
-          <span className="text-orange-600/80 cursor-pointer hover:text-orange-600 hover:underline">
-            {t.new.upgrade}
-          </span>
+          您正在使用测试版本
         </div>
         {/* 欢迎 */}
         <div className="flex items-center gap-3">
@@ -331,21 +342,35 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
         cancelText={t.confirm.no}
         closable={false}
         centered
-        
       >
-        <Checkbox
-          indeterminate={indeterminate}
-          onChange={onCheckAllTableChange}
-          checked={checkAllTbale}
-        >
-          全选
-        </Checkbox>
-        <Divider />
-        <Checkbox.Group
-          options={plainOptions}
-          value={selectedList}
-          onChange={onSelectTable}
-        />
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="font-bold">数据源选择：</div>
+            <Select
+              options={datasource.map((item) => ({
+                value: item.id?.toString(),
+                label: item.datasource_name,
+              }))}
+              value={selectedDatasource?.id?.toString()}
+              onChange={handleChangeDatasource}
+              className="w-1/2"
+            />
+          </div>
+          <Divider />
+          <Checkbox
+            indeterminate={indeterminate}
+            onChange={onCheckAllTableChange}
+            checked={checkAllTbale}
+          >
+            全选
+          </Checkbox>
+          <Divider />
+          <Checkbox.Group
+            options={plainOptions}
+            value={selectedList}
+            onChange={onSelectTable}
+          />
+        </div>
       </Modal>
     </>
   );

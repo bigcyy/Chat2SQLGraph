@@ -184,3 +184,16 @@ export const useSessionStore = create<Store.SessionState & Store.SessionAction>(
     setCurMsg: (msg: string) => set(() => ({ curMsg: msg })),
   })
 );
+
+export const useDatasourceStore = create<Store.DatasourceState & Store.DatasourceAction>(
+  (set) => ({
+    datasource: [],
+    selectedDatasource: null,
+    setDatasource: (datasource: Store.Datasource[]) => {
+      set(() => ({ datasource: datasource }));
+    },
+    setSelectedDatasource: (datasource: Store.Datasource) => {
+      set(() => ({ selectedDatasource: datasource }));
+    },
+  })
+);

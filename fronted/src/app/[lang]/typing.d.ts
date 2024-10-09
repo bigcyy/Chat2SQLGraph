@@ -78,7 +78,7 @@ declare namespace Login {
     t: Global.Dictionary;
   }
 }
-  
+
 declare namespace Store {
   interface Model {
     label: string; // 显示的名称
@@ -146,6 +146,22 @@ declare namespace Store {
     getReversedChatData: () => Session[];
     renameSession: (id: string, title: string) => void;
   }
+
+  interface Datasource {
+    id: number;
+    datasource_name: string;
+    database_name: string;
+    url: string;
+    port: number;
+  }
+  interface DatasourceState {
+    datasource: Datasource[];
+    selectedDatasource: Datasource | null;
+  }
+  interface DatasourceAction {
+    setDatasource: (datasource: Datasource[]) => void;
+    setSelectedDatasource: (datasource: Datasource) => void;
+  }
 }
 
 declare namespace API {
@@ -161,17 +177,18 @@ declare namespace API {
   }
   interface DataSource {
     datasource_name: string;
+    datasource_description: string;
     database_name: string;
     url: string;
-    port: string;
+    port: number;
     username: string;
     password: string;
   }
 
   interface TableInfo {
-    name: string;
-    ddl: string;
-    model_id: string;
+    table_name: string;
+    table_description: string;
+    table_columns: string;
   }
   interface TbaleNameList {
     table_name_list: string[];

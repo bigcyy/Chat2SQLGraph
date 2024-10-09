@@ -3,6 +3,7 @@ import {
   ArrowRightOutlined,
   BlockOutlined,
   CloseOutlined,
+  DeleteOutlined,
   DownOutlined,
   GithubOutlined,
   SettingOutlined,
@@ -13,15 +14,22 @@ import Image from "next/image";
 import { Jacques_Francois } from "next/font/google";
 import React, { useState, useEffect, useRef } from "react";
 import { IconProvider } from "../IconProvider";
-import { Button, Form, Input, Modal } from "antd";
+import { Button, Form, Input, message, Modal } from "antd";
 import Setting from "../settings/Setting";
 import OutsideClickHandler from "../OutsideClickHandler";
 import {
   useSessionStore,
   useUserStore,
   useSettingStore,
+  useDatasourceStore,
 } from "@/app/lib/store";
 import { Empty } from "antd";
+import {
+  connectDataSource,
+  deleteDataSource,
+  getDatasourceList,
+} from "@/app/http/api";
+import Comfirm from "../Comfirm";
 
 const playpen_Sans = Jacques_Francois({
   subsets: ["latin"],
@@ -38,8 +46,9 @@ export default function Slider({ t }: Slider.SlideProps) {
   const [showUserInfo, setShowUserInfo] = useState(false);
   const [showSetting, setShowSetting] = useState(false);
   const [showHistory, setShowHistory] = useState(true);
+  const [comfirmVisible, setComfirmVisible] = useState(false);
 
-  const databaseForm = Form.useForm<Slider.DatabaseForm>()[0];
+  const databaseForm = Form.useForm<API.DataSource>()[0];
 
   const sliderRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
@@ -50,17 +59,23 @@ export default function Slider({ t }: Slider.SlideProps) {
   const { getSettingFromLocal } = useSettingStore();
   const { chatData, getSessionFromLocal, getReversedChatData } =
     useSessionStore();
+  const {
+    datasource,
+    setDatasource,
+    selectedDatasource,
+    setSelectedDatasource,
+  } = useDatasourceStore();
 
   const popoverSetting = [
     {
-      id: "2",
+      id: "settings",
       title: t.slider.settings,
       click: () => {
         setShowSetting(true);
       },
     },
     {
-      id: "1",
+      id: "logout",
       title: t.slider.logout,
       click: () => {
         router.push("/login");
@@ -106,13 +121,44 @@ export default function Slider({ t }: Slider.SlideProps) {
     }
   }, [path]);
 
-  const onSubmitDatabase = (values: Slider.DatabaseForm) => {
-    console.log(values);
+  useEffect(() => {
+    getDatasourceList().then(({ data }) => {
+      if (data.code == 200) {
+        setDatasource(data.data);
+        setSelectedDatasource(data.data[0]);
+      } else {
+        message.error(data.message);
+      }
+    });
+  }, []);
+
+  const onSubmitDatabase = async (values: API.DataSource) => {
+    const { data } = await connectDataSource(values);
+    if (data.code == 200) {
+      setDatasource([...datasource, data.data]);
+      message.success("添加成功");
+    } else {
+      message.error(data.message);
+    }
   };
 
   const handleSpin = () => {
     localStorage.setItem("isPinned", (!isPinned).toString());
     setIsPinned(!isPinned);
+  };
+
+  const deleteDatasource = async () => {
+    const { data } = await deleteDataSource(selectedDatasource?.id!);
+    if (data.code == 200) {
+      setDatasource(
+        datasource.filter((item) => item.id !== selectedDatasource?.id)
+      );
+      setSelectedDatasource(datasource[0]);
+      message.success("删除成功");
+    } else {
+      message.error(data.message);
+    }
+    setComfirmVisible(false);
   };
 
   if (path.includes("/login") || path.includes("/register")) {
@@ -255,7 +301,7 @@ export default function Slider({ t }: Slider.SlideProps) {
                   >
                     <Form.Item
                       className="!m-0 flex-3"
-                      name="alias"
+                      name="datasource_name"
                       rules={[{ required: true, message: "请输入数据库别名" }]}
                     >
                       <Input placeholder="数据库别名（显示名称）" />
@@ -263,7 +309,7 @@ export default function Slider({ t }: Slider.SlideProps) {
                     <div className="flex w-full gap-1">
                       <Form.Item
                         className="!m-0 flex-3"
-                        name="host"
+                        name="url"
                         rules={[
                           { required: true, message: "请输入数据库地址" },
                         ]}
@@ -281,7 +327,7 @@ export default function Slider({ t }: Slider.SlideProps) {
 
                     <Form.Item
                       className="!m-0"
-                      name="db_username"
+                      name="username"
                       rules={[
                         { required: true, message: "请输入数据库用户名" },
                       ]}
@@ -290,15 +336,15 @@ export default function Slider({ t }: Slider.SlideProps) {
                     </Form.Item>
                     <Form.Item
                       className="!m-0"
-                      name="db_password"
+                      name="password"
                       rules={[{ required: true, message: "请输入数据库密码" }]}
                     >
-                      <Input.Password placeholder="请输入数据库密码" />
+                      <Input placeholder="请输入数据库密码" />
                     </Form.Item>
                     <div className="flex w-full gap-1">
                       <Form.Item
                         className="!m-0 flex-3"
-                        name="database"
+                        name="database_name"
                         rules={[
                           { required: true, message: "请输入数据库名称" },
                         ]}
@@ -312,15 +358,38 @@ export default function Slider({ t }: Slider.SlideProps) {
                       </Form.Item>
                     </div>
                   </Form>
-                  <div className="mb-3 relative group cursor-pointer mt-5">
-                    <span className="text-gray-950">已添加的数据源</span>
-                    <div className="flex flex-col text-sm overflow-y-auto scrollbar gap-1">
-                      <div className="hover:bg-amber-800/10 rounded-md p-1 cursor-pointer flex items-center relative group">
-                      <BlockOutlined />
-                        <span className="text-ellipsis overflow-hidden whitespace-nowrap ml-1 mr-1 flex-1 text-gray-600">
-                          vchrdufiv
-                        </span>
-                      </div>
+                  <div className="mb-3 relative group mt-5">
+                    <span className="text-gray-950 font-bold">
+                      已添加的数据源
+                    </span>
+                    <div className="overflow-y-auto scrollbar h-full">
+                      {datasource.map((item) => (
+                        <div
+                          className="flex flex-col text-sm relative gap-1"
+                          key={item.id}
+                        >
+                          <div
+                            className={`hover:bg-amber-800/10 rounded-md p-1 cursor-pointer flex items-center relative group
+                          ${
+                            selectedDatasource?.id === item.id
+                              ? "bg-amber-800/10"
+                              : ""
+                          }`}
+                            onClick={() => setSelectedDatasource(item)}
+                          >
+                            <BlockOutlined />
+                            <span className="text-ellipsis overflow-hidden whitespace-nowrap ml-1 mr-1 flex-1 text-gray-600">
+                              {item.datasource_name}
+                            </span>
+                          </div>
+                          <div
+                            className="absolute top-1 right-0 w-5 h-5 cursor-pointer flex items-center justify-center"
+                            onClick={() => setComfirmVisible(true)}
+                          >
+                            <DeleteOutlined />
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -490,6 +559,16 @@ export default function Slider({ t }: Slider.SlideProps) {
       >
         <Setting t={t} />
       </Modal>
+
+      <Comfirm
+        title={"确定要删除数据源吗？"}
+        content={"删除后将无法恢复"}
+        onCancel={() => setComfirmVisible(false)}
+        onConfirm={deleteDatasource}
+        visible={comfirmVisible}
+        yesText={t.confirm.yes}
+        noText={t.confirm.no}
+      />
     </>
   );
 }
