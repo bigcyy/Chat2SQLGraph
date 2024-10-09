@@ -65,8 +65,21 @@ class DatasourceSerializer(serializers.ModelSerializer):
                 'created_by': user
                 })
             m.save()
-            return m.id
-    
+            return self.to_dict(m)
+        
+        def to_dict(self,datasource):
+            return {
+                'id': datasource.id,
+                'datasource_name': datasource.datasource_name,
+                'datasource_description': datasource.datasource_description,
+                'database_name': datasource.database_name,
+                'url': rsa_util.decrypt(datasource.url),
+                'port': datasource.port,
+                'username': datasource.username,
+                'password': rsa_util.decrypt(datasource.password),
+                'created_by': datasource.created_by.id,
+                'created_at': datasource.created_at,
+            }
     class DeleteDatasource(serializers.Serializer):
         datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
         user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("创建人"))  
