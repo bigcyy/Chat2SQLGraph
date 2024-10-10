@@ -160,15 +160,15 @@ class DatasourceView(APIView):
 
         @swagger_auto_schema(
             method='DELETE',
-            operation_summary='删除表信息',
+            operation_summary='批量删除表信息',
             operation_description='成功返回ok\n',
             request_body=TableInfoSerializer.DeleteTable
         )
         @action(methods=['DELETE'], detail=False)
         def delete(self, request, datasource_id:int):
             serializer = TableInfoSerializer.DeleteTable(data={**request.data, 'datasource_id': datasource_id, 'user_id': request.user.id})
-            serializer.delete_table_info()
-            return result.success("ok")
+            ans = serializer.delete_table_info()
+            return result.success(ans)
 
     class RemoteTableInfoView(APIView):
         authentication_classes = [JWTAuthentication]
