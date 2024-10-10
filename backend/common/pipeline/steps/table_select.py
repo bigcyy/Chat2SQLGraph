@@ -24,7 +24,8 @@ class TableSelectStep(BaseStep):
         user_demand: str = serializers.CharField(required=True, max_length=1000,error_messages=ErrMessage.char("用户需求"))
         user_id: int = serializers.IntegerField(required=True,error_messages=ErrMessage.char("用户 id"))
         datasource_id: int = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
-
+        user_select_tables: List[int] = serializers.ListField(required=False,error_messages=ErrMessage.char("用户选择表"))
+        
         def is_valid(self, *, raise_exception=False):
             # 先进行校验基础字段是否存在
             super().is_valid(raise_exception=True)
@@ -59,14 +60,14 @@ class TableSelectStep(BaseStep):
     def _run(self, manager:PipelineManager) -> bool:
         user_demand = self.context['user_demand']
         datasource_id = self.context['datasource_id']
-        
+        user_select_tables = self.context['user_select_tables'] if self.context['user_select_tables'] else []
         table_info = TableInfo.objects.filter(datasource_id=datasource_id).all()
         manager.context['table_infos'] = table_info
         can_select_tables = ""
         for table in table_info:
             can_select_tables += f"{table.name} (id = {table.id}): {table.summary}\n"
         prompt = ChatPromptTemplate.from_template(self.get_prompt())
-        prompt = prompt.invoke({"user_demand":user_demand, "can_select_table":can_select_tables})
+        prompt = prompt.invoke({"user_demand":user_demand, "can_select_table":can_select_tables, "user_select_tables":user_select_tables})
         agent = manager.agent
         
         answer = agent.with_structured_output(self.ResponseSchema).invoke(prompt)
@@ -74,7 +75,11 @@ class TableSelectStep(BaseStep):
             return False
         # 存入局部上下文
         self.context["reason"] = answer.reason
-        self.context["table_ids"] = answer.table_ids
+        # 求user_select_tables和answer.table_ids两个集合的并集
+        user_select_tables = set(self.context['user_select_tables'])
+        answer_table_ids = set(answer.table_ids)
+        combined_table_ids = list(user_select_tables.union(answer_table_ids))
+        self.context["table_ids"] = combined_table_ids
         # 存入全局上下文
         manager.context.update(self.get_step_dict_for_saving())
         return True
@@ -98,6 +103,10 @@ class TableSelectStep(BaseStep):
     ## 数据库表
 
     {can_select_table}
+
+    ## 用户要求你必须使用以下表（若用户没有选择表，则不使用该条件）
+
+    {user_select_tables}
     """
 
     def get_step_dict_for_saving(self) -> dict:

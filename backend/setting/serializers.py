@@ -263,12 +263,12 @@ class TableInfoSerializer(serializers.ModelSerializer):
     """
     
     class DeleteTable(serializers.ModelSerializer):
+        table_info_ids = serializers.ListField(required=True,error_messages=ErrMessage.char("表 id 列表"))
         datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
-        table_info_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("表 id"))
         user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("创建人"))
         class Meta:
             model = TableInfo
-            fields = ['datasource_id','table_info_id','user_id']
+            fields = ['datasource_id','table_info_ids','user_id']
         
         def is_valid(self, *, raise_exception=False):
             super().is_valid(raise_exception=True)
@@ -276,10 +276,35 @@ class TableInfoSerializer(serializers.ModelSerializer):
             datasource = Datasource.objects.filter(id=self.data.get("datasource_id"),created_by=self.data.get("user_id")).first()
             if datasource is None:
                 raise ExceptionCodeConstants.DATASOURCE_NOT_EXIST.value.to_app_api_exception()
-        
+            
         def delete_table_info(self):
             self.is_valid(raise_exception=True)
-            TableInfo.objects.filter(id=self.data.get("table_info_id"),datasource_id=self.data.get("datasource_id")).delete()
+            # 查询出要删除的对象
+            table_infos = TableInfo.objects.filter(
+                id__in=self.data.get("table_info_ids"),
+                datasource_id=self.data.get("datasource_id")
+            )
+            # 将 id转为 set
+            existing_ids = set(table_infos.values_list('id', flat=True))
+            success_ids = []
+            error_ids = []
+            
+            # 依次删除每个对象
+            for table_info in table_infos:
+                id = table_info.id
+                try:
+                    table_info.delete()
+                    success_ids.append(id)
+                except Exception as e:
+                    error_ids.append(id)
+        
+            not_exist_ids = set(self.data.get("table_info_ids")) - existing_ids
+        
+            return {
+                "success_ids": success_ids,
+                "not_exist_ids": list(not_exist_ids),
+                "error_ids": error_ids
+            }
     
     class Query(serializers.ModelSerializer):
         datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
