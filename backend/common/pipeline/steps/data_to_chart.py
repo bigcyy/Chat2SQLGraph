@@ -6,6 +6,7 @@ from langchain_core.prompts import ChatPromptTemplate
 import json
 from rest_framework import serializers
 from common.response.field_response import ErrMessage
+from common.serializers.custom_serializer import custom_serializer
 
 class DataToChartStep(BaseStep):
 
@@ -31,7 +32,7 @@ class DataToChartStep(BaseStep):
 
     def _run(self, manager:PipelineManager) -> bool:
         # 获取上下文中的数据
-        data = self.context['data']
+        data= json.dumps(self.context['data'], default=custom_serializer)
         user_demand = self.context['user_demand']
         # 调用llm将数据转换为 ECharts option 对象的 json 格式
         prompt = ChatPromptTemplate.from_template(self.get_prompt())
