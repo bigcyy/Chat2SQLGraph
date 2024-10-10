@@ -4,7 +4,7 @@ import axios, { InternalAxiosRequestConfig } from "axios";
 
 const instance = axios.create({
   // baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000",
-  timeout: 10000, // 请求超时时间设置为 10 秒
+  timeout: 60000, // 请求超时时间设置为 10 秒
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",

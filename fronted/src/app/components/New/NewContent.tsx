@@ -6,36 +6,21 @@ import {
   ArrowRightOutlined,
   ArrowUpOutlined,
   CommentOutlined,
-  LinkOutlined,
   UpOutlined,
 } from "@ant-design/icons";
 import { v4 as uuid } from "uuid";
 
 import DropdownMenu from "@/app/components/DropDown";
-import HintText from "@/app/components/HintText";
-import { Empty, App, Modal, Checkbox, Divider, Select } from "antd";
+import { Empty, App, Modal, Checkbox, Divider, Select, Spin } from "antd";
 import Link from "next/link";
 import {
   useUserStore,
   useSettingStore,
-  useSessionStore,
   useDatasourceStore,
+  useChatStore,
 } from "@/app/lib/store";
-import { getUserInfo, refreshToken } from "@/app/http/api";
+import { createSession, getTableInfo, getUserInfo, refreshToken } from "@/app/http/api";
 import { CheckboxChangeEvent } from "antd/es/checkbox";
-
-const plainOptions = [
-  "用户信息表",
-  "订单记录表",
-  "产品目录表",
-  "库存管理表",
-  "客户反馈表",
-  "员工档案表",
-  "销售报表",
-  "供应商信息表",
-  "财务流水表",
-  "市场营销表",
-];
 
 export default function NewContent({ t }: { t: Global.Dictionary }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -43,23 +28,27 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
   const { message } = App.useApp();
 
   const [content, setContent] = useState("");
-  const [fileList, setFileList] = useState<File[]>([]);
-  const [fileUrlList, setFileUrlList] = useState<New.FileItem[]>([]);
   const [showRecents, setShowRecents] = useState(true);
   const [isSelectOpen, setIsSelectOpen] = useState(false);
-  const [selectedList, setSelectedList] = useState<string[]>(plainOptions);
-  const [tableInfo, setTableInfo] = useState<API.TableInfo[]>([]);
+  const [selectedList, setSelectedList] = useState<string[]>([]);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [historyData, setHistoryData] = useState<any>([]);
 
   const router = useRouter();
   const { settings, saveOneSettingToLocal } = useSettingStore();
   const { user, setUser } = useUserStore();
-  const { chatData, addSession, addMessage, setCurMsg } = useSessionStore();
-  const { datasource, selectedDatasource, setSelectedDatasource } =
-    useDatasourceStore();
+  const { setCurMsg } = useChatStore();
+  const {
+    datasource,
+    selectedDatasource,
+    setSelectedDatasource,
+    tableInfo,
+    setTableInfo,
+  } = useDatasourceStore();
 
-  const checkAllTbale = plainOptions.length === selectedList.length;
+  const checkAllTbale = tableInfo.length === selectedList.length;
   const indeterminate =
-    selectedList.length > 0 && selectedList.length < plainOptions.length;
+    selectedList.length > 0 && selectedList.length < tableInfo.length;
 
   const adjustHeight = () => {
     const textarea = textareaRef.current;
@@ -77,6 +66,9 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
 
   useEffect(() => {
     adjustHeight();
+  }, [content]);
+
+  useEffect(() => {
     if (localStorage.getItem("token") && localStorage.getItem("token") !== "") {
       getUserInfo()
         .then(({ data }) => {
@@ -99,48 +91,37 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
     } else {
       router.push("/login");
     }
-  }, [content]);
+  }, [])
 
-  const isImg = (filename: string) => {
-    const imgExt = ["png", "jpg", "jpeg", "gif", "bmp", "webp"];
-    const fileExt = filename.split(".").pop();
-    return fileExt && imgExt.includes(fileExt);
-  };
-
-  const sendMessageAction = () => {
+  const sendMessageAction = async () => {
+    if (selectedList.length == 0) {
+      message.warning("请选择数据表");
+      onSelectDatasource()
+      return;
+    }
     if (content.trim() == "") {
       return;
     }
-    let curMsg = content;
-
-    if (fileList.length != 0) {
-      curMsg += fileUrlList
-        .map((item) => {
-          // 找出图片
-          if (isImg(item.filename)) {
-            return `![${item.filename}](${item.url})`;
-          } else {
-            return `[${item.filename}](${item.url})`;
-          }
-        })
-        .join("\n");
-    }
-    const curSessionId = uuid();
-    addSession(curSessionId, curMsg.slice(0, 50));
-    addMessage(curSessionId, {
-      role: "user",
-      content: curMsg,
-      id: uuid(),
-      createdAt: Date.now(),
-    });
-    setContent("");
-    setFileList([]);
-    setFileUrlList([]);
-    setCurMsg(curMsg);
-    router.push(`/chat/${curSessionId}`);
+    const res = await createSession(selectedDatasource!.id!);
+    const session_id = res.data.data;
+    
+    // let curMsg = content;
+    // const curSessionId = uuid();
+    // addSession(curSessionId, curMsg.slice(0, 50));
+    // addMessage(curSessionId, {
+    //   role: "user",
+    //   content: curMsg,
+    //   id: uuid(),
+    //   createdAt: Date.now(),
+    // });
+    // setContent("");
+    // setFileList([]);
+    // setFileUrlList([]);
+    // setCurMsg(curMsg);
+    // router.push(`/chat/${curSessionId}`);
   };
 
-  const sendMessage = (
+  const sendMessage = async (
     e: React.KeyboardEvent | React.MouseEvent<HTMLDivElement>
   ) => {
     if (
@@ -150,10 +131,8 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
     ) {
       e.preventDefault();
       sendMessageAction();
-      // 在这里添加发送消息的逻辑
     } else if (e.type === "click") {
-      sendMessageAction();
-      // 在这里添加发送消息的逻辑
+      await sendMessageAction();
     }
   };
 
@@ -171,11 +150,45 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
   };
 
   const onCheckAllTableChange = (e: CheckboxChangeEvent) => {
-    setSelectedList(e.target.checked ? plainOptions : []);
+    setSelectedList(e.target.checked ? tableInfo.map((item) => item.id?.toString()) : []);
   };
 
   const handleChangeDatasource = (value: string) => {
-    setSelectedDatasource(datasource.find((item) => item.id?.toString() === value)!);
+    setTableLoading(true);
+    getTableInfo(parseInt(value)).then(({ data }) => {
+      if (data.code == 200) {
+        const tablleData = data.data as Store.TableDetail[];
+        setTableInfo(tablleData);
+        setTableLoading(false);
+        setSelectedList([]);
+        setSelectedDatasource(
+          datasource.find((item) => item.id?.toString() === value)!
+        );
+      } else {
+        setTableLoading(false);
+        message.error(data.message);
+      }
+    });
+  };
+
+  const onSelectDatasource = () => {
+    if (datasource.length == 0) {
+      message.warning("请先在左侧侧边栏添加数据源");
+      return;
+    }
+    setIsSelectOpen(true);
+    setTableLoading(true);
+    getTableInfo(selectedDatasource!.id!).then(({ data }) => {
+      if (data.code == 200) {
+        const tablleData = data.data as Store.TableDetail[];
+        setTableInfo(tablleData);
+        setSelectedList([]);
+        setTableLoading(false);
+      } else {
+        setTableLoading(false);
+        message.error(data.message);
+      }
+    });
   };
 
   return (
@@ -225,7 +238,7 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
               </div>
               <div
                 className="cursor-pointer h-[30px] flex items-center justify-center px-2 rounded-md border border-gray-300"
-                onClick={() => setIsSelectOpen(true)}
+                onClick={onSelectDatasource}
               >
                 数据选择
               </div>
@@ -236,31 +249,6 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
             onClick={sendMessage}
           >
             <ArrowUpOutlined />
-          </div>
-          {/* 文件上传 */}
-          <div
-            className={`relative pt-1  px-2 w-[96%] mx-auto -top-5 bg-orange-200/20 rounded-xl rounded-t-none -z-10 
-					border border-orange-300 transition-all duration-300
-					${fileList.length == 0 ? "max-h-[3.25rem]" : "max-h-[18rem]"}`}
-          >
-            <div className=" flex items-center justify-between h-12 select-none">
-              <div className="text-sm text-gray-500">
-                {fileList.length == 0
-                  ? t.new.file_desc
-                  : `${fileList.length} ${t.new.file_added}`}
-              </div>
-              <HintText hintText={t.new.upload_desc}>
-                <div
-                  className={`text-sm text-gray-500 font-bold cursor-pointer hover:bg-gray-800/10 rounded-lg p-2 flex items-center justify-center
-						gap-1`}
-                  onClick={() => {
-                    message.warning("等待后续开放");
-                  }}
-                >
-                  <LinkOutlined className="text-lg" /> {t.new.upload_file}
-                </div>
-              </HintText>
-            </div>
           </div>
         </div>
         {/* 最近对话 */}
@@ -295,19 +283,20 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
               </div>
             </Link>
           </div>
+          {/* 这里要改 */}
           <div
             className={` mt-4 overflow-hidden ${
-              chatData.length == 0 ? "h-[200px]" : "grid grid-cols-3 gap-4"
+              historyData.length == 0 ? "h-[200px]" : "grid grid-cols-3 gap-4"
             }`}
           >
-            {chatData.length == 0 && (
+            {historyData.length == 0 && (
               <Empty
                 description={t.slider.no_history}
                 style={{ width: "100%", height: "100%" }}
               />
             )}
-            {chatData.length != 0 &&
-              chatData.slice(0, 6).map((item, index) => (
+            {historyData.length != 0 &&
+              historyData.slice(0, 6).map((item: any, index: number) => (
                 <Link href={`/chat/${item.id}`} key={item.id}>
                   <div
                     key={index}
@@ -335,6 +324,7 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
         </div>
       </div>
       <Modal
+        title="数据选择"
         open={isSelectOpen}
         onCancel={() => setIsSelectOpen(false)}
         onOk={() => setIsSelectOpen(false)}
@@ -345,7 +335,7 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
       >
         <div>
           <div className="flex items-center gap-2">
-            <div className="font-bold">数据源选择：</div>
+            <div className="">数据源选择：</div>
             <Select
               options={datasource.map((item) => ({
                 value: item.id?.toString(),
@@ -365,11 +355,20 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
             全选
           </Checkbox>
           <Divider />
-          <Checkbox.Group
-            options={plainOptions}
-            value={selectedList}
-            onChange={onSelectTable}
-          />
+          <Spin spinning={tableLoading} tip="加载中...">
+            <Checkbox.Group
+              options={
+                tableInfo.length > 0
+                  ? tableInfo.map((item) => ({
+                      value: item.id?.toString(),
+                      label: item.name,
+                    }))
+                  : []
+              }
+              value={selectedList}
+              onChange={onSelectTable}
+            />
+          </Spin>
         </div>
       </Modal>
     </>

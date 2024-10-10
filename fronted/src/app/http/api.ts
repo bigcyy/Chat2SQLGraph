@@ -20,7 +20,7 @@ export const refreshToken = () => {
   return axios.post("/api/user/token");
 };
 
-// ----------------设置----------------
+// ----------------数据源----------------
 
 // 连接数据源
 export const connectDataSource = (data: API.DataSource) => {
@@ -39,7 +39,39 @@ export const deleteDataSource = (id: number) => {
   });
 };
 
+// 获取远端表信息
+export const getRemoteTableInfo = (datasource_id: number) => {
+  return axios.get(
+    `/api/setting/datasource/${datasource_id}/remote_table_info`
+  );
+};
+
 // 获取表信息
 export const getTableInfo = (datasource_id: number) => {
   return axios.get(`/api/setting/datasource/${datasource_id}/table_info`);
+};
+
+// 添加表
+export const addTablesPOST = (datasource_id: number, data: API.AddTable) => {
+  return axios.post(
+    `/api/setting/datasource/${datasource_id}/table_info`,
+    data
+  );
+};
+
+// ----------------对话----------------
+
+// 创建session
+export const createSession = (datasource_id: number) => {
+  return axios.post(`/api/chat/${datasource_id}`);
+};
+
+// 对话
+export const chat = (datasource_id: number, chat_id: string, data: API.StartChatData) => {
+  return axios.post(`/api/chat/${datasource_id}/${chat_id}`, data);
+};
+
+// 获取当前数据源所有聊天列表
+export const getSessionList = (datasource_id: number) => {
+  return axios.get(`/api/chat/${datasource_id}`);
 };

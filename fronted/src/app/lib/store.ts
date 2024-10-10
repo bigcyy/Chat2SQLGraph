@@ -189,11 +189,29 @@ export const useDatasourceStore = create<Store.DatasourceState & Store.Datasourc
   (set) => ({
     datasource: [],
     selectedDatasource: null,
+    tableInfo: [],
     setDatasource: (datasource: Store.Datasource[]) => {
       set(() => ({ datasource: datasource }));
     },
     setSelectedDatasource: (datasource: Store.Datasource) => {
       set(() => ({ selectedDatasource: datasource }));
     },
+    setTableInfo: (tableInfo: Store.TableDetail[]) => {
+      set(() => ({ tableInfo: tableInfo }));
+    },
   })
 );
+
+export const useChatStore = create<Store.ChatState & Store.ChatAction>(
+  (set) => ({
+    chatData: [],
+    curMsg: "",
+    setChatData: (chatData: Global.ChatItem[]) => {
+      set(() => ({ chatData: chatData }));
+    },
+    setCurMsg: (curMsg: string) => {
+      set(() => ({ curMsg: curMsg }));
+    },
+  })
+);
+

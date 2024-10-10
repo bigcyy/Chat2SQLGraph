@@ -5,6 +5,7 @@ import {
   CloseOutlined,
   DeleteOutlined,
   DownOutlined,
+  EditOutlined,
   GithubOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
@@ -14,7 +15,7 @@ import Image from "next/image";
 import { Jacques_Francois } from "next/font/google";
 import React, { useState, useEffect, useRef } from "react";
 import { IconProvider } from "../IconProvider";
-import { Button, Form, Input, message, Modal } from "antd";
+import { Button, Form, Input, message, Modal, Table } from "antd";
 import Setting from "../settings/Setting";
 import OutsideClickHandler from "../OutsideClickHandler";
 import {
@@ -28,6 +29,9 @@ import {
   connectDataSource,
   deleteDataSource,
   getDatasourceList,
+  getRemoteTableInfo,
+  getTableInfo,
+  addTablesPOST,
 } from "@/app/http/api";
 import Comfirm from "../Comfirm";
 
@@ -35,6 +39,15 @@ const playpen_Sans = Jacques_Francois({
   subsets: ["latin"],
   weight: ["400"],
 });
+
+const datasourceTestForm = {
+  datasource_name: "金融",
+  url: "127.0.0.1",
+  port: 4306,
+  username: "root",
+  password: "maybeyou",
+  database_name: "bigdata",
+};
 
 export default function Slider({ t }: Slider.SlideProps) {
   const path = usePathname();
@@ -45,8 +58,14 @@ export default function Slider({ t }: Slider.SlideProps) {
 
   const [showUserInfo, setShowUserInfo] = useState(false);
   const [showSetting, setShowSetting] = useState(false);
-  const [showHistory, setShowHistory] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
   const [comfirmVisible, setComfirmVisible] = useState(false);
+  const [curCheckedDatasource, setCurCheckedDatasource] =
+    useState<Store.Datasource | null>(null);
+  const [showEditDatabaseTable, setShowEditDatabaseTable] = useState(false);
+  const [tableData, setTableData] = useState<string[]>([]);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [selectedTableKeys, setSelectedTableKeys] = useState<string[]>([]);
 
   const databaseForm = Form.useForm<API.DataSource>()[0];
 
@@ -54,6 +73,7 @@ export default function Slider({ t }: Slider.SlideProps) {
   const logoRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLDivElement>(null);
+  const previousLocalTables = useRef<string[]>([]);
 
   const { user, getUserAvatarFromLocal } = useUserStore();
   const { getSettingFromLocal } = useSettingStore();
@@ -64,6 +84,7 @@ export default function Slider({ t }: Slider.SlideProps) {
     setDatasource,
     selectedDatasource,
     setSelectedDatasource,
+    setTableInfo
   } = useDatasourceStore();
 
   const popoverSetting = [
@@ -81,6 +102,14 @@ export default function Slider({ t }: Slider.SlideProps) {
         router.push("/login");
       },
     },
+  ];
+
+  const tableColumns = [
+    {
+      title: "表名",
+      dataIndex: "table_name",
+      key: "table_name",
+    }
   ];
 
   useEffect(() => {
@@ -107,14 +136,21 @@ export default function Slider({ t }: Slider.SlideProps) {
   }, [isPinned]);
 
   useEffect(() => {
-    const isPinned = localStorage.getItem("isPinned");
+    const defaultSetting = JSON.parse(
+      localStorage.getItem("defaultSetting") || "{}"
+    );
     getSessionFromLocal();
     getSettingFromLocal();
     getUserAvatarFromLocal();
-    if (isPinned === "true") {
+    if (defaultSetting.pin) {
       setIsPinned(true);
     } else {
       setIsPinned(false);
+    }
+    if (defaultSetting.showHistory) {
+      setShowHistory(true);
+    } else {
+      setShowHistory(false);
     }
     if (screen.width < 768) {
       setIsPinned(false);
@@ -126,32 +162,94 @@ export default function Slider({ t }: Slider.SlideProps) {
       if (data.code == 200) {
         setDatasource(data.data);
         setSelectedDatasource(data.data[0]);
+        databaseForm.setFieldsValue(datasourceTestForm);
       } else {
         message.error(data.message);
       }
     });
   }, []);
 
+  const getAllTableDetail = async (datasource_id: number) => {
+    setTableLoading(true);
+    setShowEditDatabaseTable(true);
+    Promise.all([
+      getRemoteTableInfo(datasource_id),
+      getTableInfo(datasource_id),
+    ]).then(([remote, local]) => {
+      try {
+        const remoteData = remote.data;
+        const localData = local.data;
+        if (remoteData.code == 200 && localData.code == 200) {
+          const remoteTableData = remoteData.data;
+          const localTableData = localData.data as Store.TableDetail[];
+          setTableData(
+            remoteTableData.map((item: string[]) => ({
+              key: item[0],
+              table_name: item[0],
+            }))
+          );
+          setTableInfo(localTableData);
+          previousLocalTables.current = localTableData.map((item) => item.name);
+          setSelectedTableKeys(localTableData.map((item) => item.name));
+        } else {
+          if (remoteData.code != 200) {
+            message.error(remoteData.message);
+          } else {
+            message.error(localData.message);
+          }
+        }
+      } catch (e) {
+        console.log(e);
+        message.error("获取表数据失败");
+      } finally {
+        setTableLoading(false);
+      }
+    });
+  };
+
   const onSubmitDatabase = async (values: API.DataSource) => {
     const { data } = await connectDataSource(values);
     if (data.code == 200) {
       setDatasource([...datasource, data.data]);
-      message.success("添加成功");
+      message.success("添加成功，请选择你要加入的表格");
+      databaseForm.resetFields();
+      if (datasource.length == 0) {
+        setSelectedDatasource(data.data);
+      }
+      setCurCheckedDatasource(data.data);
+      await getAllTableDetail(data.data.id);
     } else {
       message.error(data.message);
     }
   };
 
+  const handleShowHistory = () => {
+    localStorage.setItem(
+      "defaultSetting",
+      JSON.stringify({
+        pin: isPinned,
+        showHistory: !showHistory,
+      })
+    );
+    setShowHistory(!showHistory);
+  };
+
   const handleSpin = () => {
-    localStorage.setItem("isPinned", (!isPinned).toString());
+    localStorage.setItem(
+      "defaultSetting",
+      JSON.stringify({
+        pin: !isPinned,
+        showHistory: showHistory,
+      })
+    );
     setIsPinned(!isPinned);
   };
 
   const deleteDatasource = async () => {
-    const { data } = await deleteDataSource(selectedDatasource?.id!);
+    const { data } = await deleteDataSource(curCheckedDatasource?.id!);
     if (data.code == 200) {
       setDatasource(
-        datasource.filter((item) => item.id !== selectedDatasource?.id)
+        datasource.filter((item) => item.id !== curCheckedDatasource?.id)
       );
       setSelectedDatasource(datasource[0]);
       message.success("删除成功");
@@ -159,6 +257,48 @@ export default function Slider({ t }: Slider.SlideProps) {
       message.error(data.message);
     }
     setComfirmVisible(false);
+  };
+
+  const addTables = async (addTableKeys: string[]) => {
+    const { data } = await addTablesPOST(curCheckedDatasource!.id, {
+      table_name_list: addTableKeys,
+      model_id: 1,
+    });
+    if (data.code == 200) {
+      message.success("添加成功");
+    } else {
+      message.error(data.message);
+    }
+  };
+
+  // const deleteTables = async (deleteTableKeys: string[]) => {}
+
+  const onModifyTable = async () => {
+    if (!curCheckedDatasource) {
+      message.error("请选择一个数据源");
+      return;
+    }
+    // 添加：selectedTableKeys 有但是 previousLocalTables 没有
+    // 删除：previousLocalTables 有但是 selectedTableKeys 没有
+    const addTableKeys = selectedTableKeys.filter(
+      (item) => !previousLocalTables.current.includes(item)
+    );
+
+    const deleteTableKeys = previousLocalTables.current.filter(
+      (item) => !selectedTableKeys.includes(item)
+    );
+
+    setTableLoading(true);
+    if (addTableKeys.length > 0) {
+      await addTables(addTableKeys);
+    }
+    // if (deleteTableKeys.length > 0) {
+    //   const { data } = await deleteTables(curCheckedDatasource!.id, {
+    //     table_name_list: deleteTableKeys,
+    //   });
+    // }
+    setShowEditDatabaseTable(false);
+    setTableLoading(false);
   };
 
   if (path.includes("/login") || path.includes("/register")) {
@@ -279,7 +419,7 @@ export default function Slider({ t }: Slider.SlideProps) {
               <div className={`${showHistory ? "" : "flex-1"} flex flex-col`}>
                 <div
                   className="font-bold mb-3 relative group flex justify-between cursor-pointer"
-                  onClick={() => setShowHistory(!showHistory)}
+                  onClick={handleShowHistory}
                 >
                   <span>数据源配置</span>
                   <div className="cursor-pointer">
@@ -358,35 +498,54 @@ export default function Slider({ t }: Slider.SlideProps) {
                       </Form.Item>
                     </div>
                   </Form>
-                  <div className="mb-3 relative group mt-5">
+                  <div className="mb-3 relative mt-5">
                     <span className="text-gray-950 font-bold">
                       已添加的数据源
                     </span>
-                    <div className="overflow-y-auto scrollbar h-full">
+                    <div className="overflow-y-auto scrollbar h-full gap-1 flex flex-col">
                       {datasource.map((item) => (
                         <div
-                          className="flex flex-col text-sm relative gap-1"
+                          className="flex text-sm relative group transition-all duration-200"
                           key={item.id}
                         >
                           <div
-                            className={`hover:bg-amber-800/10 rounded-md p-1 cursor-pointer flex items-center relative group
-                          ${
-                            selectedDatasource?.id === item.id
-                              ? "bg-amber-800/10"
-                              : ""
-                          }`}
+                            className={`hover:bg-amber-800/10 rounded-md p-1 cursor-pointer flex items-center relative w-full
+                            ${
+                              selectedDatasource?.id === item.id
+                                ? "bg-amber-500/10"
+                                : ""
+                            }`}
                             onClick={() => setSelectedDatasource(item)}
                           >
                             <BlockOutlined />
                             <span className="text-ellipsis overflow-hidden whitespace-nowrap ml-1 mr-1 flex-1 text-gray-600">
                               {item.datasource_name}
                             </span>
-                          </div>
-                          <div
-                            className="absolute top-1 right-0 w-5 h-5 cursor-pointer flex items-center justify-center"
-                            onClick={() => setComfirmVisible(true)}
-                          >
-                            <DeleteOutlined />
+                            <div
+                              className={`w-8 h-5 cursor-pointer flex items-center justify-between opacity-0 group-hover:opacity-100
+                                 transition-opacity duration-200`}
+                            >
+                              <div
+                                className="hover:text-blue-500"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCurCheckedDatasource(item);
+                                  getAllTableDetail(item.id);
+                                }}
+                              >
+                                <EditOutlined />
+                              </div>
+                              <div
+                                className="hover:text-red-500"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCurCheckedDatasource(item);
+                                  setComfirmVisible(true);
+                                }}
+                              >
+                                <DeleteOutlined />
+                              </div>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -558,6 +717,36 @@ export default function Slider({ t }: Slider.SlideProps) {
         maskClosable={false}
       >
         <Setting t={t} />
+      </Modal>
+      {/* 添加数据源过后选表 */}
+      <Modal
+        open={showEditDatabaseTable}
+        onCancel={() => setShowEditDatabaseTable(false)}
+        onOk={onModifyTable}
+        centered
+        okText={"修改"}
+        cancelText={t.confirm.no}
+        closable={false}
+        maskClosable={false}
+        title="选择要添加的表"
+        confirmLoading={tableLoading}
+      >
+        <Table
+          scroll={{ y: 400 }}
+          dataSource={tableData}
+          columns={tableColumns}
+          rowSelection={{
+            onChange: (selectedRowKeys) => {
+              setSelectedTableKeys(selectedRowKeys as string[]);
+            },
+            selectedRowKeys: selectedTableKeys,
+          }}
+          className="scrollbar"
+          bordered
+          sticky
+          pagination={false}
+          loading={tableLoading}
+        />
       </Modal>
 
       <Comfirm

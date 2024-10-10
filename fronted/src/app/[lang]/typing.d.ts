@@ -154,13 +154,32 @@ declare namespace Store {
     url: string;
     port: number;
   }
+
+  interface TableDetail {
+    id: number;
+    name: string;
+    ddl: string;
+    summary: string;
+    datasource_id: number;
+  }
+
   interface DatasourceState {
     datasource: Datasource[];
     selectedDatasource: Datasource | null;
+    tableInfo: TableDetail[];
   }
   interface DatasourceAction {
     setDatasource: (datasource: Datasource[]) => void;
     setSelectedDatasource: (datasource: Datasource) => void;
+    setTableInfo: (tableInfo: TableDetail[]) => void;
+  }
+  interface ChatState {
+    chatData: ChatItem[];
+    curMsg: string;
+  }
+  interface ChatAction {
+    setChatData: (chatData: ChatItem[]) => void;
+    setCurMsg: (curMsg: string) => void;
   }
 }
 
@@ -184,14 +203,12 @@ declare namespace API {
     username: string;
     password: string;
   }
-
-  interface TableInfo {
-    table_name: string;
-    table_description: string;
-    table_columns: string;
-  }
-  interface TbaleNameList {
+  interface AddTable {
     table_name_list: string[];
     model_id: number;
+  }
+  interface StartChatData {
+    datasource_id: number;
+    chat_id: string;
   }
 }
