@@ -9,6 +9,7 @@ from rest_framework import serializers
 from common.response.field_response import ErrMessage
 import json
 from common.utils import rsa_util
+from common.serializers.custom_serializer import custom_serializer
 class ExecuteSqlStep(BaseStep):
 
     class ExecuteSqlStepSerializer(serializers.Serializer):
@@ -33,11 +34,8 @@ class ExecuteSqlStep(BaseStep):
         
 
     def run_after(self, manager:PipelineManager):
-        chat_record_id = uuid.uuid1()
         data = manager.context['data']
-        json_data = json.dumps({
-            "data": data
-        })
+        json_data = json.dumps(data, default=custom_serializer)
         yield to_stream_chunk_response(manager.context['chat_id'], self.__class__.__name__, json_data, Status.COMPLETED)
         
     
@@ -54,7 +52,12 @@ class ExecuteSqlStep(BaseStep):
             client = pymysql.connect(host=rsa_util.decrypt(datasource.url),port=datasource.port, user=datasource.username, password=rsa_util.decrypt(datasource.password), database=datasource.database_name)
             cursor = client.cursor()
             cursor.execute(sql)
+            columns = [col[0] for col in cursor.description]
             data = cursor.fetchall()
+            data = {
+                "columns": columns,
+                "data": data
+            }
             client.close()
             
         except Exception as e:
