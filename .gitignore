@@ -102,3 +102,4 @@ htmlcov/
 .nox/
 
 ./config.yaml
+node_modules
