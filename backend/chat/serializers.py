@@ -108,7 +108,7 @@ class ChatMessageSerializer(serializers.Serializer):
                 raise ExceptionCodeConstants.CHAT_NOT_EXIST.value.to_app_api_exception()
             # 检查user_select_tables是否存在
             if self.data.get("user_select_tables"):
-                table_ids = [int(id) for id in self.data.get("user_select_tables")]
+                table_ids = self.data.get("user_select_tables")
                 existing_table_count = TableInfo.objects.filter(
                     id__in=table_ids,
                     datasource_id=self.data.get("datasource_id")
@@ -133,7 +133,7 @@ class ChatMessageSerializer(serializers.Serializer):
                 'user_id': self.data.get("user_id"),
                 'chat_id': self.data.get("chat_id"),
                 'user_demand': self.data.get("user_demand"),
-                'user_select_tables': self.data.get("user_select_tables")
+                'user_select_tables': [int(id) for id in self.data.get("user_select_tables")]
             }
             generator = manager.run(context)
             return StreamingHttpResponse(streaming_content=generator, content_type='text/event-stream')
