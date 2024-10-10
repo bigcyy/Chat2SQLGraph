@@ -3,6 +3,7 @@ from common.response.field_response import ErrMessage
 from common.exceptions.exception import ExceptionCodeConstants
 from setting.models.datasource import Datasource
 from .models import ChatInfo
+from setting.models.table_info import TableInfo
 from django.http import StreamingHttpResponse
 from setting.models.model import Model
 from common.providers.model_provider_constants import ModelProviderConstants
@@ -90,7 +91,7 @@ class ChatMessageSerializer(serializers.Serializer):
         chat_id = serializers.CharField(required=True,error_messages=ErrMessage.char("聊天 id"))
         user_demand = serializers.CharField(required=True,error_messages=ErrMessage.char("用户需求"))
         model_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("模型 id"))
-    
+        user_select_tables = serializers.ListField(required=False,error_messages=ErrMessage.char("用户选择表"))
         def is_valid(self, *, raise_exception=False):
             super().is_valid(raise_exception=True)
             # 检查数据源是否存在
@@ -105,9 +106,19 @@ class ChatMessageSerializer(serializers.Serializer):
             chat_info = ChatInfo.objects.filter(datasource_id=self.data.get("datasource_id"),user_id=self.data.get("user_id"),id=self.data.get("chat_id")).first()
             if chat_info is None:
                 raise ExceptionCodeConstants.CHAT_NOT_EXIST.value.to_app_api_exception()
+            # 检查user_select_tables是否存在
+            if self.data.get("user_select_tables"):
+                table_ids = self.data.get("user_select_tables")
+                existing_table_count = TableInfo.objects.filter(
+                    id__in=table_ids,
+                    datasource_id=self.data.get("datasource_id")
+                ).count()
+                
+                if existing_table_count != len(table_ids):
+                    raise ExceptionCodeConstants.TABLE_NOT_EXIST.value.to_app_api_exception()
+
         def chat(self):
             self.is_valid(raise_exception=True)
-            
             # 更新聊天信息的user_demand
             ChatInfo.objects.filter(
                 datasource_id=self.data.get("datasource_id"),
@@ -121,7 +132,8 @@ class ChatMessageSerializer(serializers.Serializer):
                 'datasource_id': self.data.get("datasource_id"),
                 'user_id': self.data.get("user_id"),
                 'chat_id': self.data.get("chat_id"),
-                'user_demand': self.data.get("user_demand")
+                'user_demand': self.data.get("user_demand"),
+                'user_select_tables': self.data.get("user_select_tables")
             }
             generator = manager.run(context)
             return StreamingHttpResponse(streaming_content=generator, content_type='text/event-stream')
