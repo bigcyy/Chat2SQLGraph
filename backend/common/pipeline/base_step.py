@@ -68,7 +68,7 @@ class BaseStep(ABC):
         try:
             self.validate_params(manager)
         except Exception as e:
-            yield to_stream_chunk_response(manager.context['chat_id'], self.__class__.__name__, '参数错误', Status.ERROR)
+            yield to_stream_chunk_response(manager.context['chat_id'], self.__class__.__name__, e.message, Status.ERROR)
             return
         
         # 执行 before 方法
