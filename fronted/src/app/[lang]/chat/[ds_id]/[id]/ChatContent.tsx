@@ -2,7 +2,6 @@
 import { CommentOutlined, DownOutlined } from "@ant-design/icons";
 import React, { useRef, useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { v4 as uuid } from "uuid";
 
 import OutsideClickHandler from "@/app/components/OutsideClickHandler";
 import Confirm from "@/app/components/Comfirm";
@@ -11,36 +10,34 @@ import SelfMessage from "@/app/components/SelfMessage";
 import AssistantMsg from "@/app/components/AssistantMsg";
 import {
   useSettingStore,
-  useSessionStore,
   useUserStore,
+  useChatStore,
+  useDatasourceStore,
 } from "@/app/lib/store";
 import { throttle } from "@/app/lib/utils";
 import { message as Message } from "antd";
 import { IconProvider } from "@/app/components/IconProvider";
+import { getCurrentChat, chat } from "@/app/http/api";
 export default function ChatContent({ t }: Chat.ChatContentProps) {
   const pathname = usePathname();
   const session_id = pathname.split("/").slice(-1)[0];
+  const datasource_id = pathname.split("/").slice(-2)[0];
+
   const [showModify, setShowModify] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [curChat, setCurChat] = useState<string>("");
   const [content, setContent] = useState("");
   const [chatList, setChatList] = useState<Global.ChatItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [title, setTitle] = useState("");
   const breakStreamRef = useRef(false);
 
   const chatListRef = useRef<HTMLDivElement>(null);
   const { settings } = useSettingStore();
   const { user } = useUserStore();
 
-  const {
-    setCurMsg,
-    curMsg,
-    getSessionById,
-    addMessage,
-    deleteSession,
-    renameSession,
-    deleteMessage,
-  } = useSessionStore();
+  const { curMsg, setCurMsg } = useChatStore();
+  const { selectedTableKeys } = useDatasourceStore();
 
   const router = useRouter();
 
@@ -73,21 +70,43 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
 
   const hasSentMessage = useRef(true);
 
-  // 先加载历史记录
-  const session = getSessionById(session_id) || { messages: [], title: "" };
+  const LoadHistory = () => {
+    getCurrentChat(datasource_id, session_id).then(({data}) => {
+      console.log(data);
+      if (data.code === 200) {
+        setTitle(data.data.user_demand.slice(0, 50));
+        const chatContent = data.data.chat_content;
+        const {TableSelectStep, GenerateSqlStep, ExecuteSqlStep, DataToChartStep} = chatContent;
+        
+      } else {
+        Message.error("获取历史记录失败");
+        router.push("/");
+      }
+    }).catch((err) => {
+      console.log(err);
+      Message.error("获取历史记录失败");
+      router.push("/");
+    });
+  }
 
   useEffect(() => {
-    if (hasSentMessage.current) {
-      setChatList(session.messages);
-      downToBottom();
-    }
     // 说明从上个页面过来，需要发送
     if (curMsg !== "" && hasSentMessage.current) {
       streamChat();
+      setTitle(curMsg.slice(0, 50));
       // 标记消息已发送
       hasSentMessage.current = false;
+      setChatList([...chatList, {
+        role: "user",
+        content: curMsg,
+        createdAt: Date.now(),
+      }])
       // 清除 curMsg，防止重复发送
       setCurMsg("");
+    } else if (hasSentMessage.current) {
+      // 说明是历史记录
+      LoadHistory()
+      hasSentMessage.current = false;
     }
     // 清理函数
     return () => {
@@ -95,9 +114,9 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
     };
   }, []);
 
-  useEffect(() => {
-    setChatList(session.messages);
-  }, [session.messages.length]);
+  // useEffect(() => {
+  //   setChatList(session.messages);
+  // }, [session.messages.length]);
 
   useEffect(() => {
     adjustTextareaHeight();
@@ -115,7 +134,7 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
       ...data,
       onConfirm: () => {
         setConfirmData({ ...data, visible: false });
-        deleteSession(session_id);
+        // deleteSession(session_id);
         router.push("/new");
       },
       onCancel: () => {
@@ -127,7 +146,7 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
   const onRenameChat = () => {
     const data = {
       title: t.chat.rename_title,
-      content: session.title,
+      content: title,
       yesText: t.confirm.rename,
       noText: t.confirm.no,
       visible: true,
@@ -135,7 +154,7 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
     setModifyData({
       ...data,
       onConfirm: (value: string) => {
-        renameSession(session_id, value);
+        // renameSession(session_id, value);
         setModifyData({ ...data, visible: false, content: value });
       },
       onCancel: () => {
@@ -187,7 +206,7 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
       });
       if (res.ok) {
         const title = await res.json();
-        renameSession(session_id, title.msg.toString());
+        // renameSession(session_id, title.msg.toString());
       } else {
         Message.error(t.chat.generate_title_failed);
       }
@@ -197,44 +216,29 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
     }
   }
 
-  async function streamChat(message?: Global.ChatItem) {
+  const checkIsJson = (str: string) => {
+    try {
+      JSON.parse(str);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function streamChat() {
     setLoading(true);
     breakStreamRef.current = false;
-    let historyMsgList: Global.ChatItem[] = [];
-    if (chatList.length > 0) {
-      const historyCnt = settings.historyNum;
-      historyMsgList = chatList.slice(-historyCnt);
-    } else {
-      historyMsgList = getSessionById(session_id)?.messages || [];
-    }
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: settings.currentModel,
-        historyMsgList,
-        key: settings.APIKey,
-        baseUrl: settings.baseUrl,
-      }),
+     const response = await chat(datasource_id, session_id, {
+      user_select_tables: selectedTableKeys,
+      user_demand: curMsg,
+      model_id: 1
     });
 
     if (!response.ok) {
       const res = await response.json();
-      let errMsg = JSON.stringify(res.msg.error);
-
-      if (res.code === 400) {
-        errMsg += ", " + t.chat.error_hint;
-      }
-      addMessage(session_id, {
-        role: "assistant",
-        content: errMsg,
-        id: uuid(),
-        createdAt: Date.now(),
-      });
-      // console.log(res);
-
+      let errMsg = JSON.stringify(res);
+      console.log(errMsg);
+      Message.error("发送信息失败");
       downToBottom();
       setLoading(false);
       return;
@@ -245,20 +249,6 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
     let messgae_slice = "";
 
     while (true) {
-      if (breakStreamRef.current) {
-        reader?.cancel();
-        setLoading(false);
-        breakStreamRef.current = false;
-        setCurChat("");
-        // 停止的时候删除消息，只有一条消息就删除会话
-        if (message) {
-          deleteMessage(session_id, message.id);
-        } else {
-          deleteSession(session_id);
-          router.push("/new");
-        }
-        break;
-      }
       const { done, value } = await reader!.read();
 
       if (done) {
@@ -272,27 +262,20 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
         if (line.startsWith("data: ")) {
           const data = line.replace("data: ", "");
           if (data === "[DONE]") {
-            // 流结束
-            const all_message = {
-              role: "assistant" as const,
-              content: messgae_slice,
-              id: uuid(),
-              createdAt: Date.now(),
-            };
-            setCurChat("");
-            addMessage(session_id, all_message);
+            // setCurChat("");
             downToBottom();
             setLoading(false);
-            // 第一次发送信息生成标题
-            if (chatList.length <= 2) {
-              genTitle(historyMsgList);
-            }
           } else {
             try {
               const parsed = JSON.parse(data);
-              const content = parsed.choices[0].delta.content;
+              const content = parsed.data;
               if (content) {
                 messgae_slice += content;
+                setChatList((prev) => [...prev, {
+                  role: "assistant",
+                  content: checkIsJson(content) ? JSON.stringify(JSON.parse(content)) : content,
+                  createdAt: Date.now(),
+                }]);
                 // 节流
                 throttle(setCurChat, 1000 / 60)(messgae_slice);
               }
@@ -341,7 +324,7 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
               onClick={() => setShowModify(!showModify)}
             >
               <div className="max-w-3xl overflow-hidden whitespace-nowrap text-ellipsis">
-                {session.title}
+                {title}
               </div>
               <DownOutlined className="text-sm" />
               <div
@@ -374,25 +357,25 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
           ref={chatListRef}
         >
           <div className="max-w-3xl mx-auto flex flex-col gap-5 items-start w-full max-md:px-5">
-            {chatList.map((item) => {
+            {chatList.map((item, index) => {
               if (item.role === "user") {
                 return (
                   <SelfMessage
-                    key={item.id}
+                    key={"user"+index}
                     content={item.content}
-                    avatar={user.avatar}
+                    avatar={user.avatar!}
                     onReEdit={() => {
                       setContent(item.content);
                     }}
                   />
                 );
               } else {
-                return <AssistantMsg key={item.id} content={item.content} />;
+                return <AssistantMsg key={"assistant"+index} content={item.content} />;
               }
             })}
-            {curChat && curChat.trim() !== "" && (
+            {/* {curChat && curChat.trim() !== "" && (
               <AssistantMsg content={curChat} />
-            )}
+            )} */}
             <div
               style={{ animation: loading ? "spin 1s linear infinite" : "" }}
             >

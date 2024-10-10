@@ -27,7 +27,7 @@ declare namespace Global {
   interface ChatItem {
     role: "user" | "assistant";
     content: string;
-    id: string;
+    id?: string;
     createdAt: number;
   }
 }
@@ -166,12 +166,14 @@ declare namespace Store {
   interface DatasourceState {
     datasource: Datasource[];
     selectedDatasource: Datasource | null;
+    selectedTableKeys: string[];
     tableInfo: TableDetail[];
   }
   interface DatasourceAction {
     setDatasource: (datasource: Datasource[]) => void;
     setSelectedDatasource: (datasource: Datasource) => void;
     setTableInfo: (tableInfo: TableDetail[]) => void;
+    setSelectedTableKeys: (tableKeys: string[]) => void;
   }
   interface ChatState {
     chatData: ChatItem[];
@@ -208,7 +210,8 @@ declare namespace API {
     model_id: number;
   }
   interface StartChatData {
-    datasource_id: number;
-    chat_id: string;
+    user_select_tables: string[];
+    user_demand: string;
+    model_id: number;
   }
 }

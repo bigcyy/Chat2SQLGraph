@@ -7,6 +7,7 @@ import {
   DownOutlined,
   EditOutlined,
   GithubOutlined,
+  PlusOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
 import { usePathname, useRouter } from "next/navigation";
@@ -19,7 +20,6 @@ import { Button, Form, Input, message, Modal, Table } from "antd";
 import Setting from "../settings/Setting";
 import OutsideClickHandler from "../OutsideClickHandler";
 import {
-  useSessionStore,
   useUserStore,
   useSettingStore,
   useDatasourceStore,
@@ -32,6 +32,7 @@ import {
   getRemoteTableInfo,
   getTableInfo,
   addTablesPOST,
+  deleteTable,
 } from "@/app/http/api";
 import Comfirm from "../Comfirm";
 
@@ -66,6 +67,8 @@ export default function Slider({ t }: Slider.SlideProps) {
   const [tableData, setTableData] = useState<string[]>([]);
   const [tableLoading, setTableLoading] = useState(false);
   const [selectedTableKeys, setSelectedTableKeys] = useState<string[]>([]);
+  const [chatData, setChatData] = useState<any[]>([]);
+  const [showAddDatabase, setShowAddDatabase] = useState(false);
 
   const databaseForm = Form.useForm<API.DataSource>()[0];
 
@@ -77,14 +80,13 @@ export default function Slider({ t }: Slider.SlideProps) {
 
   const { user, getUserAvatarFromLocal } = useUserStore();
   const { getSettingFromLocal } = useSettingStore();
-  const { chatData, getSessionFromLocal, getReversedChatData } =
-    useSessionStore();
   const {
     datasource,
     setDatasource,
     selectedDatasource,
     setSelectedDatasource,
-    setTableInfo
+    setTableInfo,
+    tableInfo,
   } = useDatasourceStore();
 
   const popoverSetting = [
@@ -109,7 +111,7 @@ export default function Slider({ t }: Slider.SlideProps) {
       title: "表名",
       dataIndex: "table_name",
       key: "table_name",
-    }
+    },
   ];
 
   useEffect(() => {
@@ -139,8 +141,11 @@ export default function Slider({ t }: Slider.SlideProps) {
     const defaultSetting = JSON.parse(
       localStorage.getItem("defaultSetting") || "{}"
     );
-    getSessionFromLocal();
-    getSettingFromLocal();
+    try {
+      getSettingFromLocal();
+    } catch (e) {
+      router.push("/login");
+    }
     getUserAvatarFromLocal();
     if (defaultSetting.pin) {
       setIsPinned(true);
@@ -158,16 +163,25 @@ export default function Slider({ t }: Slider.SlideProps) {
   }, [path]);
 
   useEffect(() => {
-    getDatasourceList().then(({ data }) => {
-      if (data.code == 200) {
-        setDatasource(data.data);
-        setSelectedDatasource(data.data[0]);
-        databaseForm.setFieldsValue(datasourceTestForm);
-      } else {
-        message.error(data.message);
-      }
-    });
-  }, []);
+    if (datasource.length > 0) return;
+    getDatasourceList()
+      .then(({ data }) => {
+        if (data.code == 200) {
+          setDatasource(data.data);
+          setSelectedDatasource(data.data[0]);
+          if (process.env.NODE_ENV == "development") {
+            databaseForm.setFieldsValue(datasourceTestForm);
+          }
+        } else {
+          message.error(data.message);
+        }
+      })
+      .catch((e) => {
+        if (e.response.status == 401) {
+          router.push("/login");
+        }
+      });
+  }, [path]);
 
   const getAllTableDetail = async (datasource_id: number) => {
     setTableLoading(true);
@@ -224,14 +238,15 @@ export default function Slider({ t }: Slider.SlideProps) {
   };
 
   const handleShowHistory = () => {
-    localStorage.setItem(
-      "defaultSetting",
-      JSON.stringify({
-        pin: isPinned,
-        showHistory: !showHistory,
-      })
-    );
-    setShowHistory(!showHistory);
+    // localStorage.setItem(
+    //   "defaultSetting",
+    //   JSON.stringify({
+    //     pin: isPinned,
+    //     showHistory: !showHistory,
+    //   })
+    // );
+    // setShowHistory(!showHistory);
+    setShowAddDatabase(true);
   };
 
   const handleSpin = () => {
@@ -271,7 +286,17 @@ export default function Slider({ t }: Slider.SlideProps) {
     }
   };
 
-  // const deleteTables = async (deleteTableKeys: string[]) => {}
+  const deleteTables = async (deleteTableIds: number[]) => {
+    const { data } = await deleteTable(
+      curCheckedDatasource!.id,
+      deleteTableIds
+    );
+    if (data.code == 200) {
+      message.success("删除成功");
+    } else {
+      message.error(data.message);
+    }
+  };
 
   const onModifyTable = async () => {
     if (!curCheckedDatasource) {
@@ -284,21 +309,33 @@ export default function Slider({ t }: Slider.SlideProps) {
       (item) => !previousLocalTables.current.includes(item)
     );
 
-    const deleteTableKeys = previousLocalTables.current.filter(
+    let deleteTableKeys = previousLocalTables.current.filter(
       (item) => !selectedTableKeys.includes(item)
     );
 
+    const deleteTableIds = tableInfo
+      .filter((item) => {
+        return deleteTableKeys.includes(item.name);
+      })
+      .map((item) => item.id);
+
     setTableLoading(true);
-    if (addTableKeys.length > 0) {
+    if (addTableKeys.length > 0 && deleteTableIds.length > 0) {
+      Promise.all([addTables(addTableKeys), deleteTables(deleteTableIds)]).then(
+        () => {
+          setShowEditDatabaseTable(false);
+          setTableLoading(false);
+        }
+      );
+    } else if (addTableKeys.length > 0) {
       await addTables(addTableKeys);
+      setShowEditDatabaseTable(false);
+      setTableLoading(false);
+    } else if (deleteTableIds.length > 0) {
+      await deleteTables(deleteTableIds);
+      setShowEditDatabaseTable(false);
+      setTableLoading(false);
     }
-    // if (deleteTableKeys.length > 0) {
-    //   const { data } = await deleteTables(curCheckedDatasource!.id, {
-    //     table_name_list: deleteTableKeys,
-    //   });
-    // }
-    setShowEditDatabaseTable(false);
-    setTableLoading(false);
   };
 
   if (path.includes("/login") || path.includes("/register")) {
@@ -418,14 +455,12 @@ export default function Slider({ t }: Slider.SlideProps) {
               {/* 这里是数据库信息 */}
               <div className={`${showHistory ? "" : "flex-1"} flex flex-col`}>
                 <div
-                  className="font-bold mb-3 relative group flex justify-between cursor-pointer"
+                  className="font-bold mb-3 relative group flex justify-between cursor-pointer group"
                   onClick={handleShowHistory}
                 >
                   <span>数据源配置</span>
-                  <div className="cursor-pointer">
-                    <DownOutlined
-                      className={`${showHistory ? "rotate-180" : ""}`}
-                    />
+                  <div className="cursor-pointer group-hover:bg-orange-400 rounded-md p-1 w-6 h-6 text-sm flex items-center justify-center transition-all duration-200 max-sm:hidden">
+                    <PlusOutlined />
                   </div>
                 </div>
                 <div
@@ -433,76 +468,13 @@ export default function Slider({ t }: Slider.SlideProps) {
                     showHistory ? "max-h-0" : ""
                   }`}
                 >
-                  <Form
-                    form={databaseForm}
-                    onFinish={onSubmitDatabase}
-                    layout="vertical"
-                    className={`flex flex-col gap-2 overflow-hidden`}
-                  >
-                    <Form.Item
-                      className="!m-0 flex-3"
-                      name="datasource_name"
-                      rules={[{ required: true, message: "请输入数据库别名" }]}
-                    >
-                      <Input placeholder="数据库别名（显示名称）" />
-                    </Form.Item>
-                    <div className="flex w-full gap-1">
-                      <Form.Item
-                        className="!m-0 flex-3"
-                        name="url"
-                        rules={[
-                          { required: true, message: "请输入数据库地址" },
-                        ]}
-                      >
-                        <Input placeholder="数据库地址" />
-                      </Form.Item>
-                      <Form.Item
-                        className="!m-0 flex-1"
-                        name="port"
-                        rules={[{ required: true, message: "请输入端口" }]}
-                      >
-                        <Input placeholder="端口" />
-                      </Form.Item>
-                    </div>
-
-                    <Form.Item
-                      className="!m-0"
-                      name="username"
-                      rules={[
-                        { required: true, message: "请输入数据库用户名" },
-                      ]}
-                    >
-                      <Input placeholder="请输入数据库用户名" />
-                    </Form.Item>
-                    <Form.Item
-                      className="!m-0"
-                      name="password"
-                      rules={[{ required: true, message: "请输入数据库密码" }]}
-                    >
-                      <Input placeholder="请输入数据库密码" />
-                    </Form.Item>
-                    <div className="flex w-full gap-1">
-                      <Form.Item
-                        className="!m-0 flex-3"
-                        name="database_name"
-                        rules={[
-                          { required: true, message: "请输入数据库名称" },
-                        ]}
-                      >
-                        <Input placeholder="请输入数据库名称" />
-                      </Form.Item>
-                      <Form.Item className="!m-0 flex-1">
-                        <Button type="primary" htmlType="submit" block>
-                          添加
-                        </Button>
-                      </Form.Item>
-                    </div>
-                  </Form>
-                  <div className="mb-3 relative mt-5">
-                    <span className="text-gray-950 font-bold">
-                      已添加的数据源
-                    </span>
-                    <div className="overflow-y-auto scrollbar h-full gap-1 flex flex-col">
+                  <div className="mb-3 relative">
+                    <div className="overflow-y-auto scrollbar max-h-[15vh] gap-1 flex flex-col">
+                      {datasource.length == 0 && (
+                        <div className="flex items-center justify-center h-full">
+                          <Empty description={"没有数据源，点击右上角添加"} />
+                        </div>
+                      )}
                       {datasource.map((item) => (
                         <div
                           className="flex text-sm relative group transition-all duration-200"
@@ -558,18 +530,12 @@ export default function Slider({ t }: Slider.SlideProps) {
                 <div
                   className={`font-bold mb-3 relative group flex justify-between cursor-pointer
                   ${showHistory ? "" : ""}`}
-                  onClick={() => setShowHistory(!showHistory)}
                 >
                   <span>{t.slider.history}</span>
-                  <div className="cursor-pointer">
-                    <DownOutlined
-                      className={`${showHistory ? "" : "rotate-180"}`}
-                    />
-                  </div>
                 </div>
                 <div
-                  className={`flex flex-col text-sm overflow-y-auto scrollbar gap-1
-                    ${showHistory ? "flex-1" : "max-h-0"}`}
+                  className={`flex flex-col text-sm overflow-y-auto scrollbar gap-1 h-[43vh]
+                    `}
                   // style={{ height: "calc(100vh - 15rem)" }}
                 >
                   {chatData.length == 0 && (
@@ -577,21 +543,18 @@ export default function Slider({ t }: Slider.SlideProps) {
                       <Empty description={t.slider.no_history} />
                     </div>
                   )}
-                  {chatData &&
-                    getReversedChatData()
-                      .slice(0, 10)
-                      .map((item) => {
-                        return (
-                          <Link href={`/chat/${item.id}`} key={item.id}>
-                            <div className="hover:bg-amber-800/10 rounded-md p-1 cursor-pointer flex items-center relative group">
-                              <IconProvider.Chat width={20} height={20} />
-                              <span className="text-ellipsis overflow-hidden whitespace-nowrap ml-1 mr-1 flex-1">
-                                {item.title}
-                              </span>
-                            </div>
-                          </Link>
-                        );
-                      })}
+                  {chatData.slice(0, 10).map((item: any) => {
+                    return (
+                      <Link href={`/chat/${item.id}`} key={item.id}>
+                        <div className="hover:bg-amber-800/10 rounded-md p-1 cursor-pointer flex items-center relative group">
+                          <IconProvider.Chat width={20} height={20} />
+                          <span className="text-ellipsis overflow-hidden whitespace-nowrap ml-1 mr-1 flex-1">
+                            {item.title}
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
                   {/* 查看所有 */}
                   {chatData.length > 10 && (
                     <Link href={"/recents"} className="gap-1 mt-3">
@@ -758,6 +721,77 @@ export default function Slider({ t }: Slider.SlideProps) {
         yesText={t.confirm.yes}
         noText={t.confirm.no}
       />
+
+      <Modal
+        open={showAddDatabase}
+        onCancel={() => setShowAddDatabase(false)}
+        onOk={() => setShowAddDatabase(false)}
+        centered
+        okText={t.confirm.yes}
+        cancelText={t.confirm.no}
+        closable={false}
+        title="添加数据源"
+      >
+        <Form
+          form={databaseForm}
+          onFinish={onSubmitDatabase}
+          layout="vertical"
+          className={`flex flex-col gap-2 overflow-hidden`}
+        >
+          <Form.Item
+            className="!m-0 flex-3"
+            name="datasource_name"
+            rules={[{ required: true, message: "请输入数据库别名" }]}
+          >
+            <Input placeholder="数据库别名（显示名称）" />
+          </Form.Item>
+          <div className="flex w-full gap-1">
+            <Form.Item
+              className="!m-0 flex-3"
+              name="url"
+              rules={[{ required: true, message: "请输入数据库地址" }]}
+            >
+              <Input placeholder="数据库地址" />
+            </Form.Item>
+            <Form.Item
+              className="!m-0 flex-1"
+              name="port"
+              rules={[{ required: true, message: "请输入端口" }]}
+            >
+              <Input placeholder="端口" />
+            </Form.Item>
+          </div>
+
+          <Form.Item
+            className="!m-0"
+            name="username"
+            rules={[{ required: true, message: "请输入数据库用户名" }]}
+          >
+            <Input placeholder="请输入数据库用户名" />
+          </Form.Item>
+          <Form.Item
+            className="!m-0"
+            name="password"
+            rules={[{ required: true, message: "请输入数据库密码" }]}
+          >
+            <Input placeholder="请输入数据库密码" />
+          </Form.Item>
+          <div className="flex w-full gap-1">
+            <Form.Item
+              className="!m-0 flex-3"
+              name="database_name"
+              rules={[{ required: true, message: "请输入数据库名称" }]}
+            >
+              <Input placeholder="请输入数据库名称" />
+            </Form.Item>
+            <Form.Item className="!m-0 flex-1">
+              <Button type="primary" htmlType="submit" block>
+                添加
+              </Button>
+            </Form.Item>
+          </div>
+        </Form>
+      </Modal>
     </>
   );
 }

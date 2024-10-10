@@ -8,7 +8,6 @@ import {
   CommentOutlined,
   UpOutlined,
 } from "@ant-design/icons";
-import { v4 as uuid } from "uuid";
 
 import DropdownMenu from "@/app/components/DropDown";
 import { Empty, App, Modal, Checkbox, Divider, Select, Spin } from "antd";
@@ -19,7 +18,12 @@ import {
   useDatasourceStore,
   useChatStore,
 } from "@/app/lib/store";
-import { createSession, getTableInfo, getUserInfo, refreshToken } from "@/app/http/api";
+import {
+  createSession,
+  getTableInfo,
+  getUserInfo,
+  refreshToken,
+} from "@/app/http/api";
 import { CheckboxChangeEvent } from "antd/es/checkbox";
 
 export default function NewContent({ t }: { t: Global.Dictionary }) {
@@ -30,7 +34,7 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
   const [content, setContent] = useState("");
   const [showRecents, setShowRecents] = useState(true);
   const [isSelectOpen, setIsSelectOpen] = useState(false);
-  const [selectedList, setSelectedList] = useState<string[]>([]);
+  // const [selectedList, setSelectedList] = useState<string[]>([]);
   const [tableLoading, setTableLoading] = useState(false);
   const [historyData, setHistoryData] = useState<any>([]);
 
@@ -44,11 +48,13 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
     setSelectedDatasource,
     tableInfo,
     setTableInfo,
+    setSelectedTableKeys,
+    selectedTableKeys
   } = useDatasourceStore();
 
-  const checkAllTbale = tableInfo.length === selectedList.length;
+  const checkAllTbale = tableInfo.length === selectedTableKeys.length;
   const indeterminate =
-    selectedList.length > 0 && selectedList.length < tableInfo.length;
+  selectedTableKeys.length > 0 && selectedTableKeys.length < tableInfo.length;
 
   const adjustHeight = () => {
     const textarea = textareaRef.current;
@@ -78,25 +84,33 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
               email: data.data.username,
               name: data.data.nickname,
             });
-            refreshToken().then(({ data }) => {
-              localStorage.setItem("token", data.data);
-            });
+            refreshToken()
+              .then(({ data }) => {
+                if (data.code == 200) {
+                  localStorage.setItem("token", data.data);
+                } else {
+                  router.push("/login");
+                }
+              })
+              .catch(() => {
+                router.push("/login");
+              });
           } else {
             router.push("/login");
           }
         })
-        .catch((e) => {
+        .catch(() => {
           router.push("/login");
         });
     } else {
       router.push("/login");
     }
-  }, [])
+  }, []);
 
   const sendMessageAction = async () => {
-    if (selectedList.length == 0) {
+    if (selectedTableKeys.length == 0) {
       message.warning("请选择数据表");
-      onSelectDatasource()
+      onSelectDatasource();
       return;
     }
     if (content.trim() == "") {
@@ -104,7 +118,9 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
     }
     const res = await createSession(selectedDatasource!.id!);
     const session_id = res.data.data;
-    
+    setCurMsg(content);
+    router.push(`/chat/${selectedDatasource!.id}/${session_id}`);
+
     // let curMsg = content;
     // const curSessionId = uuid();
     // addSession(curSessionId, curMsg.slice(0, 50));
@@ -117,8 +133,6 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
     // setContent("");
     // setFileList([]);
     // setFileUrlList([]);
-    // setCurMsg(curMsg);
-    // router.push(`/chat/${curSessionId}`);
   };
 
   const sendMessage = async (
@@ -146,11 +160,13 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
   };
 
   const onSelectTable = (list: string[]) => {
-    setSelectedList(list);
+    setSelectedTableKeys(list);
   };
 
   const onCheckAllTableChange = (e: CheckboxChangeEvent) => {
-    setSelectedList(e.target.checked ? tableInfo.map((item) => item.id?.toString()) : []);
+    setSelectedTableKeys(
+      e.target.checked ? tableInfo.map((item) => item.id?.toString()) : []
+    );
   };
 
   const handleChangeDatasource = (value: string) => {
@@ -160,7 +176,7 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
         const tablleData = data.data as Store.TableDetail[];
         setTableInfo(tablleData);
         setTableLoading(false);
-        setSelectedList([]);
+        setSelectedTableKeys([]);
         setSelectedDatasource(
           datasource.find((item) => item.id?.toString() === value)!
         );
@@ -182,7 +198,6 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
       if (data.code == 200) {
         const tablleData = data.data as Store.TableDetail[];
         setTableInfo(tablleData);
-        setSelectedList([]);
         setTableLoading(false);
       } else {
         setTableLoading(false);
@@ -331,6 +346,7 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
         okText={t.confirm.yes}
         cancelText={t.confirm.no}
         closable={false}
+        maskClosable={false}
         centered
       >
         <div>
@@ -365,7 +381,7 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
                     }))
                   : []
               }
-              value={selectedList}
+              value={selectedTableKeys}
               onChange={onSelectTable}
             />
           </Spin>

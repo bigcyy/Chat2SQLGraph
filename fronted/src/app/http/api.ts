@@ -59,6 +59,13 @@ export const addTablesPOST = (datasource_id: number, data: API.AddTable) => {
   );
 };
 
+// 删除表
+export const deleteTable = (datasource_id: number, table_info_ids: number[]) => {
+  return axios.delete(`/api/setting/datasource/${datasource_id}/table_info`, {
+    data: { table_info_ids },
+  });
+};
+
 // ----------------对话----------------
 
 // 创建session
@@ -66,12 +73,23 @@ export const createSession = (datasource_id: number) => {
   return axios.post(`/api/chat/${datasource_id}`);
 };
 
-// 对话
-export const chat = (datasource_id: number, chat_id: string, data: API.StartChatData) => {
-  return axios.post(`/api/chat/${datasource_id}/${chat_id}`, data);
+// 对话 
+export const chat = (datasource_id: string, chat_id: string, data: API.StartChatData) => {
+  return fetch(`/api/chat/${datasource_id}/${chat_id}`, {
+    method: "POST",
+    body: JSON.stringify(data),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `${localStorage.getItem("token")}`,
+    },
+  });
 };
 
 // 获取当前数据源所有聊天列表
 export const getSessionList = (datasource_id: number) => {
   return axios.get(`/api/chat/${datasource_id}`);
+};
+
+export const getCurrentChat = (datasource_id: string, chat_id: string) => {
+  return axios.get(`/api/chat/${datasource_id}/${chat_id}`);
 };

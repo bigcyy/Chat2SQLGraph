@@ -69,7 +69,7 @@ export default function AssistantMsg({ content }: { content: string }) {
       >
         <div
           className={`flex flex-col items-start bg-gradient-to-b from-[#f8f7f5] to-[#f6f6f2] rounded-lg  gap-3  relative max-w-full border border-white/50
-          ${showEdit ? "w-full p-1" : "w-fit px-3 p-2"}
+          ${showEdit ? "w-full p-1" : "px-3 p-2"}
           `}
         >
           <div className="markdown-content border-slate-400 rounded-lg overflow-hidden break-words text-slate-800 w-full">
