@@ -198,6 +198,7 @@ class ChatMessageSerializer(serializers.Serializer):
                 "user_id":chat_info.user_id.id,
                 "user_demand":chat_info.user_demand,
                 "chat_content":json.loads(chat_info.chat_content),
+                "sse_message_list":json.loads(chat_info.sse_message_list),
                 "created_at":chat_info.created_at,
                 "updated_at":chat_info.updated_at,
 

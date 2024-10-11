@@ -1,6 +1,6 @@
 from typing import Type
 from .base_step import BaseStep
-from .response_util import to_stream_chunk_response
+from .response_util import format_stream_chunk
 import uuid
 import json
 from chat.models import ChatInfo
@@ -20,7 +20,7 @@ class PipelineManager:
         # 发送工作流产生的消息
         for response in response_generator:
             self.context['sse_message_list'].append(response)
-            yield response
+            yield format_stream_chunk(response)
         
         # todo 事务
         # 保存整个流程的执行结果
