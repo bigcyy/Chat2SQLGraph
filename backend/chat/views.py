@@ -29,8 +29,8 @@ class ChatView(APIView):
         query_serializer=ChatSerializer.Query
     )
     @action(methods=['GET'], detail=False)
-    def get(self, request, datasource_id):
-            serializer = ChatSerializer.Query(data={**request.data,"datasource_id":datasource_id,"user_id":request.user.id})
+    def get(self, request, datasource_id = None):
+            serializer = ChatSerializer.Query(data={**request.data,"datasource_id":datasource_id ,"user_id":request.user.id})
             ans = serializer.list()
             return result.success(ans)
 

@@ -43,10 +43,10 @@ class DataToChartStep(BaseStep):
         except Exception as e:
             return False
         
-        # 写入局部上下文
+        # 将输出存入局部上下文
         self.context['chart_option'] = answer.content
-        # 写入全局上下文
-        manager.context.update(self.get_step_dict_for_saving())
+        # 将输出存入全局上下文
+        manager.context.update(self.step_output_data())
         return True
 
 
@@ -73,7 +73,7 @@ class DataToChartStep(BaseStep):
     解析后的 Echart option 对象的 json 格式 ，保证所有输出能够直接的正确的被 JSON.parse(optionJson) 所解析成 ECharts option 对象，如果出现错误你将会被解雇！只需要输出 option 对象的 json 格式，不要输出任何其他内容（包括markdown格式的代码块）。
     """
 
-    def get_step_dict_for_saving(self) -> dict:
+    def step_output_data(self) -> dict:
         return {
             "chart_option":self.context.get("chart_option")
         }

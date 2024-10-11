@@ -64,11 +64,11 @@ class ExecuteSqlStep(BaseStep):
             return False
         # 写入局部上下文
         self.context['data'] = data
-        # 写入全局上下文
-        manager.context.update(self.get_step_dict_for_saving())
+        # 将输出存入全局上下文
+        manager.context.update(self.step_output_data())
         return True
 
-    def get_step_dict_for_saving(self) -> dict:
+    def step_output_data(self) -> dict:
         return {
             "data": self.context.get("data")
         }

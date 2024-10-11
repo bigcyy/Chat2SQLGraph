@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from rest_framework import serializers
 from .response_util import to_stream_chunk_response, Status
+import json
+from common.serializers.custom_serializer import custom_serializer
 
 class BaseStep(ABC):
     def __init__(self):
@@ -106,8 +108,14 @@ class BaseStep(ABC):
                 yield response
 
     @abstractmethod
-    def get_step_dict_for_saving(self) -> dict:
+    def step_output_data(self) -> dict:
         """
-        返回需要保存的当前步骤状态字典，在整个 pipeline 执行完毕后，会将这些字典保存到数据库中
+        返回当前步骤执行后输出的数据，在整个 pipeline 执行完毕后，会将这些数据保存到数据库中，返回json序列化的结果
         """
         pass
+
+    def get_step_output_data_for_save(self) -> str:
+        """
+        返回当前步骤执行后需要保存的数据的json序列化的结果，便于保存到数据库中
+        """
+        return json.dumps(self.step_output_data(),default=custom_serializer)
