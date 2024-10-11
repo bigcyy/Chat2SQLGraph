@@ -19,24 +19,18 @@ from langchain_core.language_models import BaseChatModel
 
 class ChatSerializer(serializers.Serializer):
     class Query(serializers.Serializer):
-        datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))
         user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("用户 id"))
-
-        def is_valid(self, *, raise_exception=False):
-            super().is_valid(raise_exception=True)
-            datasource = Datasource.objects.filter(id=self.data.get("datasource_id"),created_by=self.data.get("user_id")).first()
-            if datasource is None:
-                raise ExceptionCodeConstants.DATASOURCE_NOT_EXIST.value.to_app_api_exception()
             
         def list(self):
             self.is_valid()
-            chat_infos = ChatInfo.objects.filter(datasource_id=self.data.get("datasource_id"),user_id=self.data.get("user_id")).all()
+            chat_infos = ChatInfo.objects.filter(user_id=self.data.get("user_id")).all()
             return [self.to_dict(chat_info) for chat_info in chat_infos]
         
         def to_dict(self,chat_info):
             return {
                 "id":chat_info.id,
                 "datasource_id":chat_info.datasource_id.id,
+                "datasource_name":chat_info.datasource_id.datasource_name,
                 "user_id":chat_info.user_id.id,
                 "user_demand":chat_info.user_demand,
                 "created_at":chat_info.created_at,
