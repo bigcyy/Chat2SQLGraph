@@ -80,8 +80,10 @@ class TableSelectStep(BaseStep):
         answer_table_ids = set(answer.table_ids)
         combined_table_ids = list(user_select_tables.union(answer_table_ids))
         self.context["table_ids"] = combined_table_ids
-        # 存入全局上下文
-        manager.context.update(self.get_step_dict_for_saving())
+
+        # 将输出存入全局上下文
+        manager.context.update(self.step_output_data())
+
         return True
 
     def get_prompt(self):
@@ -109,8 +111,9 @@ class TableSelectStep(BaseStep):
     {user_select_tables}
     """
 
-    def get_step_dict_for_saving(self) -> dict:
+    def step_output_data(self) -> dict:
         return {
             "reason":self.context.get("reason"),
             "table_ids":self.context.get("table_ids")
         }
+    

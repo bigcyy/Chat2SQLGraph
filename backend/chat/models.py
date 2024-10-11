@@ -11,6 +11,7 @@ class ChatInfo(models.Model):
     user_id = models.ForeignKey(User,verbose_name="用户 id",on_delete=models.CASCADE,db_column="user_id")
     user_demand = models.TextField(blank = True, null = True, verbose_name = "用户需求")
     chat_content = models.JSONField (verbose_name="会话内容",blank = True, null = True)
+    sse_message_list = models.JSONField(verbose_name="sse 消息列表",blank = True, null = True)
 
     created_at = models.DateTimeField(verbose_name="创建时间",auto_now_add=True)
     updated_at = models.DateTimeField(verbose_name="更新时间",auto_now=True)

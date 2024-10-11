@@ -78,8 +78,8 @@ class GenerateSqlStep(BaseStep):
         # 存入局部上下文
         self.context["sql"] = answer.sql
         self.context["think"] = answer.think
-        # 写入全局上下文
-        manager.context.update(self.get_step_dict_for_saving())
+        # 将输出存入全局上下文
+        manager.context.update(self.step_output_data())
         return True
 
     def get_prompt(self):
@@ -103,7 +103,7 @@ class GenerateSqlStep(BaseStep):
     {ddl_string}
     """
 
-    def get_step_dict_for_saving(self) -> dict:
+    def step_output_data(self) -> dict:
         return {
             "sql": self.context.get("sql"),
             "think": self.context.get("think")
