@@ -36,3 +36,19 @@ class ApplicationAccessToken(models.Model):
 
     class Meta:
         db_table = "application_access_token"
+
+class ApplicationChatInfo(models.Model):
+    """
+    应用会话信息
+    """
+
+    id = models.UUIDField(verbose_name="会话 id",max_length=32,primary_key=True,default=uuid.uuid1)
+    user_demand = models.TextField(verbose_name = "用户需求")
+    chat_content = models.JSONField (verbose_name="会话内容",blank = True, null = True)
+    sse_message_list = models.JSONField(verbose_name="sse 消息列表",blank = True, null = True)
+    created_at = models.DateTimeField(verbose_name="创建时间",auto_now_add=True)
+    updated_at = models.DateTimeField(verbose_name="更新时间",auto_now=True)
+
+    class Meta:
+        db_table = "application_chat_info"
+
