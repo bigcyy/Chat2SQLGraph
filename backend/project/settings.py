@@ -15,6 +15,7 @@ INSTALLED_APPS = [
     'common',
     'setting',
     'chat',
+    'application',
     'django.contrib.staticfiles',  # required for serving swagger ui's css/js files
     'drf_yasg',
     'corsheaders',
