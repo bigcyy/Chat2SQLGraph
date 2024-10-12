@@ -32,7 +32,7 @@ class DataToChartStep(BaseStep):
 
     def _run(self, manager:PipelineManager) -> bool:
         # 获取上下文中的数据
-        data= json.dumps(self.context['data'], default=custom_serializer)
+        data= self.context['data']
         user_demand = self.context['user_demand']
         # 调用llm将数据转换为 ECharts option 对象的 json 格式
         prompt = ChatPromptTemplate.from_template(self.get_prompt())

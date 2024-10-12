@@ -34,8 +34,8 @@ class ExecuteSqlStep(BaseStep):
         
 
     def run_after(self, manager:PipelineManager):
-        data = manager.context['data']
-        json_data = json.dumps(data, default=custom_serializer)
+        output_data = self.step_output_data()
+        json_data = json.dumps(output_data, default=custom_serializer)
         yield to_stream_chunk_response(manager.context['chat_id'], self.__class__.__name__, json_data, Status.COMPLETED)
         
     
@@ -54,21 +54,22 @@ class ExecuteSqlStep(BaseStep):
             cursor.execute(sql)
             columns = [col[0] for col in cursor.description]
             data = cursor.fetchall()
-            data = {
-                "columns": columns,
-                "data": data
-            }
             client.close()
             
         except Exception as e:
             return False
         # 写入局部上下文
         self.context['data'] = data
+        self.context['columns'] = columns
         # 将输出存入全局上下文
-        manager.context.update(self.step_output_data())
+        output_data = self.step_output_data()
+        json_data = json.dumps(output_data, default=custom_serializer)
+        manager.context.update({"data": json_data})
         return True
 
     def step_output_data(self) -> dict:
         return {
+            "columns": self.context.get("columns"),
             "data": self.context.get("data")
         }
+        
