@@ -51,7 +51,8 @@ class DataToChartStep(BaseStep):
                 else:
                     # 所有尝试都失败，返回False
                     return False
-        
+        if answer.content is None or answer.content == "":
+            return False
         # 将输出存入局部上下文
         self.context['chart_option'] = answer.content
         # 将输出存入全局上下文
