@@ -78,9 +78,16 @@ class GenerateSqlStep(BaseStep):
         if answer.error:
             manager.context["error_reason"] = answer.think
             return False
+        
+        # todo error为 false 但是sql为空
+        if answer.sql is None or answer.sql == "":
+            manager.context["error_reason"] = "生成sql失败"
+            return False
+        
         # 存入局部上下文
         self.context["sql"] = answer.sql
         self.context["think"] = answer.think
+        
         # 将输出存入全局上下文
         manager.context.update(self.step_output_data())
         return True
@@ -95,6 +102,7 @@ class GenerateSqlStep(BaseStep):
 
     首先，判断提供的数据库表是否能够满足用户数据分析和可视化需求。
     若能满足，则分析用户的数据分析需求，查看数据可视化过程涉及的数据库表，编写sql语句。
+    若不能满足，则 error 字段为 true，在 think 字段给出友好的错误信息。
     请逐步进行思考，并将思考过程一起输出。
 
     ## 用户需求
