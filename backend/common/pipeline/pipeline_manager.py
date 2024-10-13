@@ -4,9 +4,11 @@ from .response_util import format_stream_chunk
 import uuid
 import json
 from chat.models import ChatInfo
+from common.handler.exception_handler import handle_pipeline_exception
 
 class PipelineManager:
     def __init__(self, step_chain_head:Type[BaseStep], agent):
+        self.current_running_step = None
         self.step_chain_head = step_chain_head
         self.context = {'all_tokens': 0, 'pipeline_run_time': 0,'sse_message_list': []}
         self.agent = agent
@@ -18,15 +20,19 @@ class PipelineManager:
         # 运行工作流
         response_generator = self.step_chain_head.run(self)
         # 发送工作流产生的消息
-        for response in response_generator:
-            self.context['sse_message_list'].append(response)
-            yield format_stream_chunk(response)
-        
-        # todo 事务
-        # 保存整个流程的执行结果
-        self.save_context()
-        # 保存 sse 消息列表
-        self.save_sse_message_list()
+        try:
+            for response in response_generator:
+                self.context['sse_message_list'].append(response)
+                yield format_stream_chunk(response)
+        except Exception as e:
+            # 处理工作流中的异常
+            error_response = handle_pipeline_exception(e, self.context['chat_id'], self.current_running_step.__class__.__name__)
+            self.context['sse_message_list'].append(error_response)
+            yield format_stream_chunk(error_response)
+        finally:
+            # todo 事务
+            # 保存工作流执行结果
+            self.save()
     
     def re_run(self, begin_step_key:str, steps_content:dict ,context:dict = None):
 
@@ -60,6 +66,13 @@ class PipelineManager:
             step = step.next_step
         return json.dumps(save_dict)
     
+    def save(self):
+        """
+        保存工作流执行结果
+        """
+        self.save_context()
+        self.save_sse_message_list()
+
     def save_context(self):
         chat_id = self.context['chat_id']
         json_str = self.get_save_context()
