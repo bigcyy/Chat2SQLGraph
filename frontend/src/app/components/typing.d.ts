@@ -58,3 +58,11 @@ declare namespace HintText {
     position?: "top" | "bottom";
   }
 }
+
+declare namespace Setting {
+  interface SettingProps {
+    t: Global.Dictionary;
+    defalutPage?: "select" | "add" | "user";
+  }
+}
+

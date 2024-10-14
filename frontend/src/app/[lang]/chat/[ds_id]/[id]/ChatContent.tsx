@@ -9,15 +9,16 @@ import Modify from "@/app/components/Modify";
 import SelfMessage from "@/app/components/SelfMessage";
 import AssistantMsg from "@/app/components/AssistantMsg";
 import {
-  useSettingStore,
   useUserStore,
   useChatStore,
   useDatasourceStore,
+  useSettingStore,
 } from "@/app/lib/store";
 import { throttle } from "@/app/lib/utils";
-import { message as Message } from "antd";
+import { message as Message, Table } from "antd";
 import { IconProvider } from "@/app/components/IconProvider";
 import { getCurrentChat, chat } from "@/app/http/api";
+import Chart from "@/app/components/Chart";
 export default function ChatContent({ t }: Chat.ChatContentProps) {
   const pathname = usePathname();
   const session_id = pathname.split("/").slice(-1)[0];
@@ -25,7 +26,6 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
 
   const [showModify, setShowModify] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [curChat, setCurChat] = useState<string>("");
   const [content, setContent] = useState("");
   const [chatList, setChatList] = useState<Global.ChatItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,11 +33,12 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
   const breakStreamRef = useRef(false);
 
   const chatListRef = useRef<HTMLDivElement>(null);
-  const { settings } = useSettingStore();
   const { user } = useUserStore();
 
   const { curMsg, setCurMsg } = useChatStore();
-  const { selectedTableKeys } = useDatasourceStore();
+  const { selectedTableKeys, setSelectedDatasource, datasource } =
+    useDatasourceStore();
+  const { settings } = useSettingStore();
 
   const router = useRouter();
 
@@ -71,23 +72,35 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
   const hasSentMessage = useRef(true);
 
   const LoadHistory = () => {
-    getCurrentChat(datasource_id, session_id).then(({data}) => {
-      console.log(data);
-      if (data.code === 200) {
-        setTitle(data.data.user_demand.slice(0, 50));
-        const chatContent = data.data.chat_content;
-        const {TableSelectStep, GenerateSqlStep, ExecuteSqlStep, DataToChartStep} = chatContent;
-        
-      } else {
+    getCurrentChat(datasource_id, session_id)
+      .then(({ data }: any) => {
+        if (data.code === 200) {
+          setChatList([
+            {
+              role: "user",
+              content: data.data.user_demand,
+              createdAt: data.data.created_at,
+            },
+          ]);
+          setTitle(data.data.user_demand.slice(0, 50));
+          setSelectedDatasource(
+            datasource.find((item) => item.id.toString() == datasource_id)!
+          );
+          const sse_message_list = data.data.sse_message_list;
+          sse_message_list.forEach((item: any) => {
+            setResultChatItem(JSON.parse(item).data);
+          });
+        } else {
+          Message.error("获取历史记录失败");
+          router.push("/");
+        }
+      })
+      .catch((err: any) => {
+        console.log(err);
         Message.error("获取历史记录失败");
         router.push("/");
-      }
-    }).catch((err) => {
-      console.log(err);
-      Message.error("获取历史记录失败");
-      router.push("/");
-    });
-  }
+      });
+  };
 
   useEffect(() => {
     // 说明从上个页面过来，需要发送
@@ -96,16 +109,19 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
       setTitle(curMsg.slice(0, 50));
       // 标记消息已发送
       hasSentMessage.current = false;
-      setChatList([...chatList, {
-        role: "user",
-        content: curMsg,
-        createdAt: Date.now(),
-      }])
+      setChatList([
+        ...chatList,
+        {
+          role: "user",
+          content: curMsg,
+          createdAt: Date.now(),
+        },
+      ]);
       // 清除 curMsg，防止重复发送
       setCurMsg("");
     } else if (hasSentMessage.current) {
       // 说明是历史记录
-      LoadHistory()
+      LoadHistory();
       hasSentMessage.current = false;
     }
     // 清理函数
@@ -184,38 +200,6 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
 
   const throttleDownToBottom = throttle(downToBottom, 50);
 
-  async function genTitle(historyMsgList: Global.ChatItem[]) {
-    try {
-      const res = await fetch("/api/chat-out-stream", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          baseUrl: settings.baseUrl,
-          key: settings.APIKey,
-          historyMsgList: [
-            ...historyMsgList,
-            {
-              role: "user",
-              content: t.chat.generate_title,
-            },
-          ],
-        }),
-      });
-      if (res.ok) {
-        const title = await res.json();
-        // renameSession(session_id, title.msg.toString());
-      } else {
-        Message.error(t.chat.generate_title_failed);
-      }
-    } catch (e) {
-      console.log(e);
-      Message.error(t.chat.generate_title_failed);
-    }
-  }
-
   const checkIsJson = (str: string) => {
     try {
       JSON.parse(str);
@@ -223,15 +207,86 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
     } catch (e) {
       return false;
     }
-  }
+  };
+
+  const setResultChatItem = (content: string) => {
+    if (checkIsJson(content)) {
+      const parsed = JSON.parse(content);
+      if (parsed.table_ids) {
+        const item = {
+          role: "assistant" as const,
+          content: `**选择表**：${parsed.table_ids.join(",")}\n\n**原因**：${
+            parsed.reason
+          }`,
+          createdAt: Date.now(),
+        };
+        setChatList((prev) => [...prev, item]);
+      } else if (parsed.sql || parsed.sql == "") {
+        const item = {
+          role: "assistant" as const,
+          content: `**生成SQL**：${parsed.sql}\n\n**原因**：${parsed.think}`,
+          createdAt: Date.now(),
+          editable: true,
+        };
+        setChatList((prev) => [...prev, item]);
+      } else if (parsed.columns) {
+        // 表格数据
+        const columns = parsed.columns.map((item: string) => ({
+          title: item,
+          dataIndex: item,
+          key: item,
+          defaultSortOrder: "ascend",
+          sorter: (a: any, b: any) => a[item] - b[item],
+        }));
+        const showData = parsed.data.slice(0, 100);
+        const data = showData.map((item: any[], index: number) => {
+          let everyItem: Record<string, any> = {};
+          item.forEach((val: any, i: number) => {
+            everyItem[columns[i].dataIndex] = val;
+          });
+          everyItem.key = index;
+          return everyItem;
+        });
+        let moreHint = "";
+        if (parsed.data.length > 100) {
+          moreHint = `表格仅展示前100条数据，共${parsed.data.length}条`;
+        }
+        const item = {
+          role: "assistant" as const,
+          content: (
+            <div>
+              <Table columns={columns} dataSource={data} scroll={{ x: true }} />
+              {moreHint}
+            </div>
+          ),
+          createdAt: Date.now(),
+        };
+        setChatList((prev) => [...prev, item]);
+      } else if (parsed.series) {
+        const item = {
+          role: "assistant" as const,
+          content: <Chart option={parsed} />,
+          createdAt: Date.now(),
+        };
+        setChatList((prev) => [...prev, item]);
+      }
+    } else {
+      const item = {
+        role: "assistant" as const,
+        content,
+        createdAt: Date.now(),
+      };
+      setChatList((prev) => [...prev, item]);
+    }
+  };
 
   async function streamChat() {
     setLoading(true);
     breakStreamRef.current = false;
-     const response = await chat(datasource_id, session_id, {
+    const response = await chat(datasource_id, session_id, {
       user_select_tables: selectedTableKeys,
       user_demand: curMsg,
-      model_id: 1
+      model_id: settings.currentModelId,
     });
 
     if (!response.ok) {
@@ -246,7 +301,6 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
 
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
-    let messgae_slice = "";
 
     while (true) {
       const { done, value } = await reader!.read();
@@ -255,14 +309,14 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
         setLoading(false);
         break;
       }
+
       const chunk = decoder.decode(value);
       const lines = chunk.split("\n");
 
       for (const line of lines) {
         if (line.startsWith("data: ")) {
-          const data = line.replace("data: ", "");
+          const data = line.slice(6);
           if (data === "[DONE]") {
-            // setCurChat("");
             downToBottom();
             setLoading(false);
           } else {
@@ -270,14 +324,11 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
               const parsed = JSON.parse(data);
               const content = parsed.data;
               if (content) {
-                messgae_slice += content;
-                setChatList((prev) => [...prev, {
-                  role: "assistant",
-                  content: checkIsJson(content) ? JSON.stringify(JSON.parse(content)) : content,
-                  createdAt: Date.now(),
-                }]);
-                // 节流
-                throttle(setCurChat, 1000 / 60)(messgae_slice);
+                try {
+                  setResultChatItem(content);
+                } catch (error) {
+                  console.error("解析出错:", error);
+                }
               }
               // 如果内容滑到了底部，就一直往底下滚动
               if (isScrolledToBottom()) {
@@ -285,7 +336,6 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
               }
             } catch (error) {
               console.error("解析JSON时出错:", error);
-              setCurChat("");
             }
           }
         }
@@ -361,16 +411,22 @@ export default function ChatContent({ t }: Chat.ChatContentProps) {
               if (item.role === "user") {
                 return (
                   <SelfMessage
-                    key={"user"+index}
-                    content={item.content}
+                    key={"user" + index}
+                    content={item.content as string}
                     avatar={user.avatar!}
                     onReEdit={() => {
-                      setContent(item.content);
+                      setContent(item.content as string);
                     }}
                   />
                 );
               } else {
-                return <AssistantMsg key={"assistant"+index} content={item.content} />;
+                return (
+                  <AssistantMsg
+                    key={"assistant" + index}
+                    content={item.content}
+                    editable={item.editable}
+                  />
+                );
               }
             })}
             {/* {curChat && curChat.trim() !== "" && (

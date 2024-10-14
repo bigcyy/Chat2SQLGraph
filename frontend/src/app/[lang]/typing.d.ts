@@ -26,9 +26,15 @@ declare namespace Global {
   }
   interface ChatItem {
     role: "user" | "assistant";
-    content: string;
+    content: string | React.ReactNode;
+    editable?: boolean;
     id?: string;
     createdAt: number;
+  }
+
+  interface ModelProvider {
+    provider: string;
+    name: string;
   }
 }
 
@@ -81,28 +87,26 @@ declare namespace Login {
 
 declare namespace Store {
   interface Model {
-    label: string; // 显示的名称
-    value: string; // 实际的名称
+    id: number;
+    name: string;
+    model_name: string;
+    provider: string;
+    created_at: string;
   }
   interface Setting {
-    baseUrl: string;
-    APIKey: string;
+    modelProviders: Global.ModelProvider[];
     models: Model[];
-    customerModels: string[];
-    currentDisplayModel: string;
-    currentModel: string;
-    historyNum: number;
+    currentProvider: string;
+    currentModelId: number;
   }
   interface SettingState {
     settings: Setting;
   }
   interface SettingAction {
-    getSettingFromLocal: () => void;
-    saveSettingsToLocal: (setting: Setting) => void;
-    saveOneSettingToLocal: <K extends keyof Setting>(
-      key: K,
-      value: Setting[K]
-    ) => void;
+    setModelProviders: (providers: Global.ModelProvider[]) => void;
+    setModels: (models: Model[]) => void;
+    setCurrentProvider: (provider: string) => void;
+    setCurrentModelId: (modelId: number) => void;
   }
 
   interface User {
@@ -175,13 +179,22 @@ declare namespace Store {
     setTableInfo: (tableInfo: TableDetail[]) => void;
     setSelectedTableKeys: (tableKeys: string[]) => void;
   }
+  interface ChatHistoryItem {
+    id: string;
+    datasource_id: number;
+    datasource_name?: string;
+    user_demand: string;
+    created_at: number;
+  }
   interface ChatState {
     chatData: ChatItem[];
     curMsg: string;
+    chatHistory: ChatHistoryItem[];
   }
   interface ChatAction {
     setChatData: (chatData: ChatItem[]) => void;
     setCurMsg: (curMsg: string) => void;
+    setChatHistory: (chatHistory: ChatHistoryItem[]) => void;
   }
 }
 
@@ -213,5 +226,13 @@ declare namespace API {
     user_select_tables: string[];
     user_demand: string;
     model_id: number;
+  }
+  interface AddModel {
+    name: string;
+    model_name: string;
+    provider: number;
+    api_key: string;
+    base_url: string;
+    self_defined_model?: string;
   }
 }

@@ -34,14 +34,12 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
   const [content, setContent] = useState("");
   const [showRecents, setShowRecents] = useState(true);
   const [isSelectOpen, setIsSelectOpen] = useState(false);
-  // const [selectedList, setSelectedList] = useState<string[]>([]);
   const [tableLoading, setTableLoading] = useState(false);
-  const [historyData, setHistoryData] = useState<any>([]);
 
   const router = useRouter();
-  const { settings, saveOneSettingToLocal } = useSettingStore();
-  const { user, setUser } = useUserStore();
-  const { setCurMsg } = useChatStore();
+  const { settings, setCurrentModelId } = useSettingStore();
+  const { user } = useUserStore();
+  const { setCurMsg, chatHistory, setChatHistory } = useChatStore();
   const {
     datasource,
     selectedDatasource,
@@ -49,12 +47,13 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
     tableInfo,
     setTableInfo,
     setSelectedTableKeys,
-    selectedTableKeys
+    selectedTableKeys,
   } = useDatasourceStore();
+
 
   const checkAllTbale = tableInfo.length === selectedTableKeys.length;
   const indeterminate =
-  selectedTableKeys.length > 0 && selectedTableKeys.length < tableInfo.length;
+    selectedTableKeys.length > 0 && selectedTableKeys.length < tableInfo.length;
 
   const adjustHeight = () => {
     const textarea = textareaRef.current;
@@ -74,65 +73,27 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
     adjustHeight();
   }, [content]);
 
-  useEffect(() => {
-    if (localStorage.getItem("token") && localStorage.getItem("token") !== "") {
-      getUserInfo()
-        .then(({ data }) => {
-          if (data.code === 200) {
-            setUser({
-              id: data.data.user_id,
-              email: data.data.username,
-              name: data.data.nickname,
-            });
-            refreshToken()
-              .then(({ data }) => {
-                if (data.code == 200) {
-                  localStorage.setItem("token", data.data);
-                } else {
-                  router.push("/login");
-                }
-              })
-              .catch(() => {
-                router.push("/login");
-              });
-          } else {
-            router.push("/login");
-          }
-        })
-        .catch(() => {
-          router.push("/login");
-        });
-    } else {
-      router.push("/login");
-    }
-  }, []);
-
   const sendMessageAction = async () => {
-    if (selectedTableKeys.length == 0) {
-      message.warning("请选择数据表");
-      onSelectDatasource();
-      return;
-    }
+    // if (selectedTableKeys.length == 0) {
+    //   message.warning("请选择数据表");
+    //   onSelectDatasource();
+    //   return;
+    // }
     if (content.trim() == "") {
       return;
     }
     const res = await createSession(selectedDatasource!.id!);
     const session_id = res.data.data;
     setCurMsg(content);
+    setChatHistory([{
+      id: session_id,
+      datasource_id: selectedDatasource!.id!,
+      user_demand: content,
+        created_at: Date.now(),
+      },
+      ...chatHistory,
+    ]);
     router.push(`/chat/${selectedDatasource!.id}/${session_id}`);
-
-    // let curMsg = content;
-    // const curSessionId = uuid();
-    // addSession(curSessionId, curMsg.slice(0, 50));
-    // addMessage(curSessionId, {
-    //   role: "user",
-    //   content: curMsg,
-    //   id: uuid(),
-    //   createdAt: Date.now(),
-    // });
-    // setContent("");
-    // setFileList([]);
-    // setFileUrlList([]);
   };
 
   const sendMessage = async (
@@ -150,10 +111,10 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
     }
   };
 
-  const chooseModel = (item: Store.Model) => {
-    saveOneSettingToLocal("currentModel", item.value);
-    saveOneSettingToLocal("currentDisplayModel", item.label);
-  };
+  // const chooseModel = (item: Store.Model) => {
+  //   saveOneSettingToLocal("currentModel", item.value);
+  //   saveOneSettingToLocal("currentDisplayModel", item.label);
+  // };
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
@@ -192,9 +153,12 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
       message.warning("请先在左侧侧边栏添加数据源");
       return;
     }
+    if (!selectedDatasource) {
+      setSelectedDatasource(datasource[0]);
+    }
     setIsSelectOpen(true);
     setTableLoading(true);
-    getTableInfo(selectedDatasource!.id!).then(({ data }) => {
+    getTableInfo(selectedDatasource ? selectedDatasource!.id! : datasource[0].id!).then(({ data }) => {
       if (data.code == 200) {
         const tablleData = data.data as Store.TableDetail[];
         setTableInfo(tablleData);
@@ -244,11 +208,14 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
             <div className="text-sm relative z-10 flex gap-2">
               <div className="">
                 <DropdownMenu
-                  items={settings.models}
-                  callback={(item) => chooseModel(item)}
+                  items={settings.models.map((item) => ({
+                    label: item.name,
+                    value: item.id.toString(),
+                  }))}
+                  callback={(item) => {setCurrentModelId(parseInt(item.value))}}
                   width="100px"
                 >
-                  {settings.currentDisplayModel}
+                  {settings.models.find(item => item.id === settings.currentModelId)?.name}
                 </DropdownMenu>
               </div>
               <div
@@ -301,18 +268,18 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
           {/* 这里要改 */}
           <div
             className={` mt-4 overflow-hidden ${
-              historyData.length == 0 ? "h-[200px]" : "grid grid-cols-3 gap-4"
+              chatHistory.length == 0 ? "h-[200px]" : "grid grid-cols-3 gap-4"
             }`}
           >
-            {historyData.length == 0 && (
+            {chatHistory.length == 0 && (
               <Empty
                 description={t.slider.no_history}
                 style={{ width: "100%", height: "100%" }}
               />
             )}
-            {historyData.length != 0 &&
-              historyData.slice(0, 6).map((item: any, index: number) => (
-                <Link href={`/chat/${item.id}`} key={item.id}>
+            {chatHistory.length != 0 &&
+              chatHistory.slice(0, 6).map((item, index: number) => (
+                <Link href={`/chat/${item.datasource_id}/${item.id}`} key={item.id}>
                   <div
                     key={index}
                     className={`flex flex-col justify-between cursor-pointer p-3 border rounded-md shadow-sm hover:drop-shadow-md
@@ -327,10 +294,10 @@ export default function NewContent({ t }: { t: Global.Dictionary }) {
                       <CommentOutlined />
                     </div>
                     <div className="mt-2 text-sm font-medium truncate">
-                      {item.title}
+                      {item.user_demand}
                     </div>
                     <div className="mt-2 text-xs text-gray-500">
-                      {new Date(item.createdAt).toLocaleString()}
+                      {new Date(item.created_at).toLocaleString()}
                     </div>
                   </div>
                 </Link>

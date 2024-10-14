@@ -23,6 +23,7 @@ import {
   useUserStore,
   useSettingStore,
   useDatasourceStore,
+  useChatStore,
 } from "@/app/lib/store";
 import { Empty } from "antd";
 import {
@@ -33,8 +34,14 @@ import {
   getTableInfo,
   addTablesPOST,
   deleteTable,
+  getChatHistory,
+  getModelProviders,
+  getModels,
+  getUserInfo,
+  refreshToken,
 } from "@/app/http/api";
 import Comfirm from "../Comfirm";
+import { all } from "@/app/lib/utils";
 
 const playpen_Sans = Jacques_Francois({
   subsets: ["latin"],
@@ -59,7 +66,6 @@ export default function Slider({ t }: Slider.SlideProps) {
 
   const [showUserInfo, setShowUserInfo] = useState(false);
   const [showSetting, setShowSetting] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [comfirmVisible, setComfirmVisible] = useState(false);
   const [curCheckedDatasource, setCurCheckedDatasource] =
     useState<Store.Datasource | null>(null);
@@ -67,19 +73,26 @@ export default function Slider({ t }: Slider.SlideProps) {
   const [tableData, setTableData] = useState<string[]>([]);
   const [tableLoading, setTableLoading] = useState(false);
   const [selectedTableKeys, setSelectedTableKeys] = useState<string[]>([]);
-  const [chatData, setChatData] = useState<any[]>([]);
   const [showAddDatabase, setShowAddDatabase] = useState(false);
 
   const databaseForm = Form.useForm<API.DataSource>()[0];
 
+  const shouldFetchInitialData = useRef(true);
+  const shouldFetchDatasource = useRef(true);
   const sliderRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLDivElement>(null);
   const previousLocalTables = useRef<string[]>([]);
 
-  const { user, getUserAvatarFromLocal } = useUserStore();
-  const { getSettingFromLocal } = useSettingStore();
+  const { user, getUserAvatarFromLocal, setUser } = useUserStore();
+  const {
+    setModelProviders,
+    setModels,
+    setCurrentProvider,
+    setCurrentModelId,
+    settings,
+  } = useSettingStore();
   const {
     datasource,
     setDatasource,
@@ -88,6 +101,7 @@ export default function Slider({ t }: Slider.SlideProps) {
     setTableInfo,
     tableInfo,
   } = useDatasourceStore();
+  const { chatHistory, setChatHistory } = useChatStore();
 
   const popoverSetting = [
     {
@@ -141,21 +155,11 @@ export default function Slider({ t }: Slider.SlideProps) {
     const defaultSetting = JSON.parse(
       localStorage.getItem("defaultSetting") || "{}"
     );
-    try {
-      getSettingFromLocal();
-    } catch (e) {
-      router.push("/login");
-    }
     getUserAvatarFromLocal();
     if (defaultSetting.pin) {
       setIsPinned(true);
     } else {
       setIsPinned(false);
-    }
-    if (defaultSetting.showHistory) {
-      setShowHistory(true);
-    } else {
-      setShowHistory(false);
     }
     if (screen.width < 768) {
       setIsPinned(false);
@@ -164,24 +168,87 @@ export default function Slider({ t }: Slider.SlideProps) {
 
   useEffect(() => {
     if (datasource.length > 0) return;
-    getDatasourceList()
-      .then(({ data }) => {
+    if (settings.currentModelId == -1 && shouldFetchInitialData.current) {
+      fetchInitialData();
+      shouldFetchInitialData.current = false;
+    }
+  }, [path]);
+
+  useEffect(() => {
+    if (shouldFetchDatasource.current) {
+      getChatHistory().then(({ data }) => {
         if (data.code == 200) {
-          setDatasource(data.data);
-          setSelectedDatasource(data.data[0]);
-          if (process.env.NODE_ENV == "development") {
-            databaseForm.setFieldsValue(datasourceTestForm);
-          }
-        } else {
-          message.error(data.message);
-        }
-      })
-      .catch((e) => {
-        if (e.response.status == 401) {
-          router.push("/login");
+          setChatHistory(data.data.reverse());
         }
       });
-  }, [path]);
+
+      getDatasourceList()
+        .then(({ data }) => {
+          if (data.code == 200) {
+            setDatasource(data.data);
+            setSelectedDatasource(data.data[0]);
+            if (process.env.NODE_ENV == "development") {
+              databaseForm.setFieldsValue(datasourceTestForm);
+            }
+          } else {
+            message.error(data.message);
+          }
+        })
+        .catch((e) => {
+          if (e.response.status == 401) {
+            router.push("/login");
+          }
+        });
+      shouldFetchDatasource.current = false;
+    }
+  }, []);
+
+  const fetchInitialData = async () => {
+    const token = localStorage.getItem("token");
+    if (!token || token == "") {
+      router.push("/login");
+      return;
+    }
+    getUserInfo()
+      .then(({ data }) => {
+        if (data.code === 200) {
+          setUser({
+            id: data.data.user_id,
+            email: data.data.username,
+            name: data.data.nickname,
+          });
+          refreshToken().then(({ data }) => {
+            if (data.code == 200) {
+              localStorage.setItem("token", data.data);
+            }
+          });
+        } else {
+          router.push("/login");
+        }
+      })
+      .catch(() => {
+        router.push("/login");
+      });
+    try {
+      const res = await getModelProviders();
+      const providerData = res.data;
+      if (providerData.code != 200) {
+        message.error(providerData.message);
+        return;
+      }
+      setModelProviders(providerData.data);
+      setCurrentProvider(providerData.data[0].provider);
+      const modelRes = await getModels();
+      if (modelRes.data.code != 200) {
+        message.error(modelRes.data.message);
+        return;
+      }
+      setModels(modelRes.data.data);
+      setCurrentModelId(modelRes.data.data[0].id);
+    } catch (e) {
+      console.log(e);
+    }
+  };
 
   const getAllTableDetail = async (datasource_id: number) => {
     setTableLoading(true);
@@ -238,14 +305,6 @@ export default function Slider({ t }: Slider.SlideProps) {
   };
 
   const handleShowHistory = () => {
-    // localStorage.setItem(
-    //   "defaultSetting",
-    //   JSON.stringify({
-    //     pin: isPinned,
-    //     showHistory: !showHistory,
-    //   })
-    // );
-    // setShowHistory(!showHistory);
     setShowAddDatabase(true);
   };
 
@@ -254,7 +313,6 @@ export default function Slider({ t }: Slider.SlideProps) {
       "defaultSetting",
       JSON.stringify({
         pin: !isPinned,
-        showHistory: showHistory,
       })
     );
     setIsPinned(!isPinned);
@@ -453,7 +511,7 @@ export default function Slider({ t }: Slider.SlideProps) {
             {/* 从这里开始对话历史到底部 */}
             <div className="flex flex-col gap-2 justify-between flex-1 duration-300 transition-all">
               {/* 这里是数据库信息 */}
-              <div className={`${showHistory ? "" : "flex-1"} flex flex-col`}>
+              <div className={`flex flex-col`}>
                 <div
                   className="font-bold mb-3 relative group flex justify-between cursor-pointer group"
                   onClick={handleShowHistory}
@@ -463,11 +521,7 @@ export default function Slider({ t }: Slider.SlideProps) {
                     <PlusOutlined />
                   </div>
                 </div>
-                <div
-                  className={`flex flex-col gap-2 overflow-hidden ${
-                    showHistory ? "max-h-0" : ""
-                  }`}
-                >
+                <div className={`flex flex-col gap-2 overflow-hidden`}>
                   <div className="mb-3 relative">
                     <div className="overflow-y-auto scrollbar max-h-[15vh] gap-1 flex flex-col">
                       {datasource.length == 0 && (
@@ -525,11 +579,10 @@ export default function Slider({ t }: Slider.SlideProps) {
                   </div>
                 </div>
               </div>
-              <div className={`${showHistory ? "flex-1" : ""}`}>
+              <div className={``}>
                 {/* 对话历史 */}
                 <div
-                  className={`font-bold mb-3 relative group flex justify-between cursor-pointer
-                  ${showHistory ? "" : ""}`}
+                  className={`font-bold mb-3 relative group flex justify-between cursor-pointer`}
                 >
                   <span>{t.slider.history}</span>
                 </div>
@@ -538,25 +591,28 @@ export default function Slider({ t }: Slider.SlideProps) {
                     `}
                   // style={{ height: "calc(100vh - 15rem)" }}
                 >
-                  {chatData.length == 0 && (
+                  {chatHistory.length == 0 && (
                     <div className="flex items-center justify-center h-full">
                       <Empty description={t.slider.no_history} />
                     </div>
                   )}
-                  {chatData.slice(0, 10).map((item: any) => {
+                  {chatHistory.slice(0, 10).map((item) => {
                     return (
-                      <Link href={`/chat/${item.id}`} key={item.id}>
+                      <Link
+                        href={`/chat/${item.datasource_id}/${item.id}`}
+                        key={item.id}
+                      >
                         <div className="hover:bg-amber-800/10 rounded-md p-1 cursor-pointer flex items-center relative group">
                           <IconProvider.Chat width={20} height={20} />
                           <span className="text-ellipsis overflow-hidden whitespace-nowrap ml-1 mr-1 flex-1">
-                            {item.title}
+                            {item.user_demand}
                           </span>
                         </div>
                       </Link>
                     );
                   })}
                   {/* 查看所有 */}
-                  {chatData.length > 10 && (
+                  {chatHistory.length > 10 && (
                     <Link href={"/recents"} className="gap-1 mt-3">
                       <div className="flex h-5 font-bold cursor-pointer hover:text-black/70">
                         <span>{t.slider.show_all}</span>
@@ -677,7 +733,7 @@ export default function Slider({ t }: Slider.SlideProps) {
         okText={t.confirm.yes}
         cancelText={t.confirm.no}
         closable={false}
-        maskClosable={false}
+        footer={null}
       >
         <Setting t={t} />
       </Modal>

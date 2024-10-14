@@ -81,8 +81,15 @@ export const chat = (datasource_id: string, chat_id: string, data: API.StartChat
     headers: {
       "Content-Type": "application/json",
       "Authorization": `${localStorage.getItem("token")}`,
+      "Connection": "keep-alive",
+      "Cache-Control": "no-cache",
     },
   });
+};
+
+// 获取聊天历史
+export const getChatHistory = () => {
+  return axios.get(`/api/chat`);
 };
 
 // 获取当前数据源所有聊天列表
@@ -92,4 +99,45 @@ export const getSessionList = (datasource_id: number) => {
 
 export const getCurrentChat = (datasource_id: string, chat_id: string) => {
   return axios.get(`/api/chat/${datasource_id}/${chat_id}`);
+};
+
+// 删除聊天
+export const deleteChat = (datasource_id: number, chat_id: string) => {
+  return axios.delete(`/api/chat/${datasource_id}`, {
+    data: {
+      chat_id,
+    },
+  });
+};
+
+// ----------------设置----------------
+
+// 获取模型提供商列表
+export const getModelProviders = () => {
+  return axios.get("/api/setting/provider");
+};
+
+// 获取相应模型提供商的模型
+export const getModelsByProvider = (provider: string) => {
+  return axios.get(`/api/setting/${provider}/model_list`);
+};
+
+// 根据模型提供者获取模型列表
+export const getModels = () => {
+  return axios.get(`/api/setting/model`);
+};
+
+// 添加模型
+export const addModel = (data: API.AddModel) => {
+  return axios.post("/api/setting/model", data);
+};
+
+// 获取所有模型
+export const getAllModels = () => {
+  return axios.get("/api/setting/model");
+};
+
+// 测试模型
+export const testModel = (data: Omit<API.AddModel, 'name'>) => {
+  return axios.post("/api/setting/model/test", data);
 };

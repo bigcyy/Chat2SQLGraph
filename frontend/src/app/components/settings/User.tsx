@@ -1,4 +1,4 @@
-import { Input, message } from "antd";
+import { Button, Input, message } from "antd";
 import React, { useRef } from "react";
 import { useUserStore } from "../../lib/store";
 import Image from "next/image";
@@ -39,6 +39,31 @@ export default function User({ t }: { t: Global.Dictionary }) {
       <div className="space-y-4">
         <div className="flex items-center">
           <label className="w-1/2 text-sm font-medium text-gray-700">
+            {t.setting.avatar}
+          </label>
+          <div className="w-1/2 flex items-center justify-evenly">
+            <div
+              className={`w-20 h-20 rounded-full overflow-hidden cursor-pointer relative group`}
+              onClick={() => inputRef.current?.click()}
+            >
+              <Image
+                src={user.avatar!}
+                width={80}
+                height={80}
+                alt={"头像"}
+                className="object-cover w-full h-full"
+              />
+              <div
+                className={`absolute inset-0 z-10 flex items-center justify-center text-2xl bg-black/30 
+                text-gray-200 group-hover:opacity-100 opacity-0 transition-opacity duration-300`}
+              >
+                <UploadOutlined />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center">
+          <label className="w-1/2 text-sm font-medium text-gray-700">
             {t.setting.nickname}
           </label>
           <div className="w-1/2 flex items-center">
@@ -64,26 +89,6 @@ export default function User({ t }: { t: Global.Dictionary }) {
             />
           </div>
         </div>
-
-        <div className="flex items-center">
-          <label className="w-1/2 text-sm font-medium text-gray-700">
-            {t.setting.avatar}
-          </label>
-          <div className="w-1/2 flex items-center justify-evenly">
-            <div
-              className={`w-20 h-20 rounded-full overflow-hidden cursor-pointer relative group`}
-              onClick={() => inputRef.current?.click()}
-            >
-              <Image src={user.avatar!} width={80} height={80} alt={"头像"} className="object-cover w-full h-full"/>
-              <div
-                className={`absolute inset-0 z-10 flex items-center justify-center text-2xl bg-black/30 
-                text-gray-200 group-hover:opacity-100 opacity-0 transition-opacity duration-300`}
-              >
-                <UploadOutlined />
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
       <input
         type="file"
@@ -92,6 +97,9 @@ export default function User({ t }: { t: Global.Dictionary }) {
         ref={inputRef}
         onChange={handleImageChange}
       />
+      <div className="flex justify-end mt-2">
+        <Button type="primary">保存</Button>
+      </div>
     </div>
   );
 }

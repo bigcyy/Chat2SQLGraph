@@ -10,22 +10,24 @@ import Link from "next/link";
 
 import { IconProvider } from "@/app/components/IconProvider";
 import Comfirm from "@/app/components/Comfirm";
-import { useSessionStore } from "@/app/lib/store";
-import { debounce } from "@/app/lib/utils";
+import { useChatStore } from "@/app/lib/store";
+import { debounce, all } from "@/app/lib/utils";
+import { deleteChat } from "@/app/http/api";
+import { AxiosResponse } from "axios";
+import { message, Spin } from "antd";
 
 export default function RecentsContent({ t }: Recents.RecentsContentProps) {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const [historyData, setHistoryData] = useState<Store.Session[]>([]);
+  const [historyData, setHistoryData] = useState<Store.ChatHistoryItem[]>([]);
   const [comfirmVisible, setComfirmVisible] = useState(false);
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const { getReversedChatData, deleteSession } = useSessionStore();
-
-  const chatData = getReversedChatData();
+  const { chatHistory, setChatHistory } = useChatStore();
 
   useEffect(() => {
-    setHistoryData(chatData);
-  }, [chatData]);
+    setHistoryData(chatHistory);
+  }, [chatHistory]);
 
   const handleSelectItem = (
     e: React.MouseEvent<HTMLDivElement>,
@@ -39,22 +41,59 @@ export default function RecentsContent({ t }: Recents.RecentsContentProps) {
     }
   };
 
-  const handleMultiDelete = () => {
+  const handleMultiDelete = async () => {
+    setLoading(true);
+    let deleteTempArr: { datasource_id: number; chat_id: string }[] = [];
     selectedItems.forEach((id) => {
-      deleteSession(id);
+      const { datasource_id } = chatHistory.filter((item) => item.id === id)[0];
+      deleteTempArr.push({ datasource_id, chat_id: id });
     });
-    setSelectedItems([]);
+
+    try {
+      const res = (await all(
+        deleteTempArr.map((item) =>
+          deleteChat(item.datasource_id, item.chat_id)
+        )
+      )) as AxiosResponse<any, any>[];
+      res.forEach((item) => {
+        if (item.data.code != 200) {
+          message.error("删除失败");
+        }
+      });
+      setChatHistory(
+        chatHistory.filter((item) => !selectedItems.includes(item.id))
+      );
+      setSelectedItems([]);
+      setLoading(false);
+    } catch (e) {
+      message.error("删除失败");
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setLoading(true);
+    const res = await deleteChat(
+      chatHistory.filter((item) => item.id === id)[0].datasource_id,
+      id
+    );
+    if (res.data.code != 200) {
+      message.error("删除失败");
+    } else {
+      setChatHistory(chatHistory.filter((item) => item.id !== id));
+    }
+    setLoading(false);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (value.trim() === "") {
-      setHistoryData(chatData);
+      setHistoryData(chatHistory);
       return;
     }
     setHistoryData(
       historyData.filter((item) =>
-        item.title.toLowerCase().includes(value.toLowerCase())
+        item.user_demand.toLowerCase().includes(value.toLowerCase())
       )
     );
   };
@@ -152,30 +191,34 @@ export default function RecentsContent({ t }: Recents.RecentsContentProps) {
           {/* 历史对话记录 */}
 
           <ul className="flex flex-col gap-2 text-gray">
-            {historyData ? (
-              historyData.map((item) => (
-                <li className="list-none relative group" key={item.id}>
-                  <Link href={`/chat/${item.id}`}>
-                    <div
-                      className={`flex group relative gap-2 p-4 pl-5 flex-col justify-between h-20 rounded-xl hover:bg-white/60 border border-gray-300 shadow-sm 
+            <Spin spinning={loading}>
+              <div className="flex flex-col gap-2">
+                {historyData ? (
+                  historyData.map((item) => (
+                    <li className="list-none relative group" key={item.id}>
+                      <Link href={`/chat/${item.datasource_id}/${item.id}`}>
+                        <div
+                          className={`flex group relative gap-2 p-4 pl-5 flex-col justify-between h-20 rounded-xl hover:bg-white/60 border border-gray-300 shadow-sm 
                         ${
                           selectedItems.length != 0 &&
                           selectedItems.includes(item.id)
                             ? "border-blue-300 bg-blue-300/20"
                             : ""
                         }`}
-                      style={{ maxWidth: "calc(100vw - 1.5rem)" }}
-                    >
-                      <div className="w-full overflow-hidden text-ellipsis whitespace-nowrap">
-                        {item.title}
-                      </div>
-                      <div className="text-xs gap-2 flex items-center">
-                        <span>{new Date(item.createdAt).toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </Link>
-                  <div
-                    className={`h-6 w-6 cursor-pointer border bg-white rounded-md absolute border-gray-300 top-10 left-0 -translate-y-1/2 
+                          style={{ maxWidth: "calc(100vw - 1.5rem)" }}
+                        >
+                          <div className="w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                            {item.user_demand}
+                          </div>
+                          <div className="text-xs gap-2 flex items-center">
+                            <span>
+                              {new Date(item.created_at).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                      <div
+                        className={`h-6 w-6 cursor-pointer border bg-white rounded-md absolute border-gray-300 top-10 left-0 -translate-y-1/2 
                     -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 group flex items-center justify-center text-white
                     ${
                       selectedItems.length != 0 &&
@@ -184,34 +227,36 @@ export default function RecentsContent({ t }: Recents.RecentsContentProps) {
                         : ""
                     }
                     ${selectedItems.length == 0 ? "opacity-0" : "opacity-100"}`}
-                    onClick={(e) => {
-                      handleSelectItem(e, item.id);
-                    }}
-                  >
-                    {selectedItems.length != 0 &&
-                    selectedItems.includes(item.id) ? (
-                      <CheckOutlined />
-                    ) : (
-                      ""
-                    )}
-                  </div>
-                  <div
-                    className={`absolute top-1 right-2 group-hover:opacity-100 transition-opacity duration-200 opacity-0 cursor-pointer hover:text-red-500 ${
-                      selectedItems.length == 0 ? "" : "opacity-0"
-                    }`}
-                    title={t.confirm.delete}
-                    onClick={() => {
-                      setComfirmVisible(true);
-                      setDeleteSessionId(item.id);
-                    }}
-                  >
-                    <DeleteOutlined />
-                  </div>
-                </li>
-              ))
-            ) : (
-              <div className="text-center">{t.recents.no_data}</div>
-            )}
+                        onClick={(e) => {
+                          handleSelectItem(e, item.id);
+                        }}
+                      >
+                        {selectedItems.length != 0 &&
+                        selectedItems.includes(item.id) ? (
+                          <CheckOutlined />
+                        ) : (
+                          ""
+                        )}
+                      </div>
+                      <div
+                        className={`absolute top-1 right-2 group-hover:opacity-100 transition-opacity duration-200 opacity-0 cursor-pointer hover:text-red-500 ${
+                          selectedItems.length == 0 ? "" : "opacity-0"
+                        }`}
+                        title={t.confirm.delete}
+                        onClick={() => {
+                          setComfirmVisible(true);
+                          setDeleteSessionId(item.id);
+                        }}
+                      >
+                        <DeleteOutlined />
+                      </div>
+                    </li>
+                  ))
+                ) : (
+                  <div className="text-center">{t.recents.no_data}</div>
+                )}
+              </div>
+            </Spin>
           </ul>
         </div>
       </main>
@@ -225,7 +270,7 @@ export default function RecentsContent({ t }: Recents.RecentsContentProps) {
         onConfirm={() => {
           setComfirmVisible(false);
           if (deleteSessionId) {
-            deleteSession(deleteSessionId);
+            handleDelete(deleteSessionId);
           }
         }}
         visible={comfirmVisible}

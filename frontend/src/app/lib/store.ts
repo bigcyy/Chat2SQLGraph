@@ -1,76 +1,34 @@
 import { create } from "zustand";
-import { DEFAULT_MODEL_LIST } from "./constant";
 
 export const useSettingStore = create<Store.SettingState & Store.SettingAction>(
   (set) => ({
     settings: {
-      baseUrl: "",
-      APIKey: "",
+      modelProviders: [],
       models: [],
-      customerModels: [],
-      currentDisplayModel: "GPT-4o mini",
-      currentModel: "gpt-4o-mini",
-      historyNum: 5,
+      currentProvider: "",
+      currentModelId: -1, // 存的是模型的value，而不是描述
     },
-    getSettingFromLocal: () => {
-      const setting = localStorage.getItem("setting");
-      if (setting) {
-        set((state) => {
-          const newSetting = {
-            ...state.settings,
-            ...JSON.parse(setting),
-          } as Store.Setting;
-
-          // 合并默认模型列表和用户自定义模型列表
-          const customerModels = newSetting.customerModels
-            .filter((model) => model.trim() !== "")
-            .map((model) => ({ label: model, value: model }));
-
-          // 添加customer model 并去重
-          newSetting.models = newSetting.models
-            .concat(customerModels)
-            .concat(DEFAULT_MODEL_LIST)
-            .filter(
-              (model, index, self) =>
-                index === self.findIndex((t) => t.value === model.value)
-            )
-            .sort((a, b) => a.value.localeCompare(b.value));
-          localStorage.setItem("setting", JSON.stringify(newSetting));
-          return { settings: newSetting };
-        });
-      } else {
-        set((state) => {
-          const newSetting = { ...state.settings, models: DEFAULT_MODEL_LIST };
-          localStorage.setItem("setting", JSON.stringify(newSetting));
-          return { settings: newSetting };
-        });
-      }
+    setModelProviders: (providers: Global.ModelProvider[]) => {
+      set((state) => ({
+        settings: { ...state.settings, modelProviders: providers },
+      }));
     },
-    saveSettingsToLocal: (setting: Store.Setting) => {
+    setModels: (models: Store.Model[]) => {
       set((state) => {
-        const newSetting = { ...state.settings, ...setting };
-        localStorage.setItem("setting", JSON.stringify(newSetting));
-        return { settings: newSetting };
+        // 按照创建时间排序，最新的在后面
+        models = models.sort((a, b) => -b.created_at.localeCompare(a.created_at));
+        return { settings: { ...state.settings, models: models } };
       });
     },
-    saveOneSettingToLocal: <K extends keyof Store.Setting>(
-      key: K,
-      value: Store.Setting[K]
-    ) => {
-      set((state) => {
-        const newSetting = { ...state.settings, [key]: value };
-        if (key === "customerModels") {
-          const valueToAdd = (value as string[])
-            .filter((model) => model.trim() !== "")
-            .map((model) => ({ label: model, value: model }));
-          newSetting.models = DEFAULT_MODEL_LIST.concat(valueToAdd).filter(
-            (model, index, self) =>
-              index === self.findIndex((t) => t.value === model.value)
-          );
-        }
-        localStorage.setItem("setting", JSON.stringify(newSetting));
-        return { settings: newSetting };
-      });
+    setCurrentProvider: (provider: string) => {
+      set((state) => ({
+        settings: { ...state.settings, currentProvider: provider },
+      }));
+    },
+    setCurrentModelId: (modelId: number) => {
+      set((state) => ({
+        settings: { ...state.settings, currentModelId: modelId },
+      }));
     },
   })
 );
@@ -110,37 +68,40 @@ export const useUserStore = create<Store.UserState & Store.UserAction>(
   })
 );
 
-export const useDatasourceStore = create<Store.DatasourceState & Store.DatasourceAction>(
-  (set) => ({
-    datasource: [],
-    selectedDatasource: null,
-    tableInfo: [],
-    selectedTableKeys: [],
-    setDatasource: (datasource: Store.Datasource[]) => {
-      set(() => ({ datasource: datasource }));
-    },
-    setSelectedDatasource: (datasource: Store.Datasource) => {
-      set(() => ({ selectedDatasource: datasource }));
-    },
-    setTableInfo: (tableInfo: Store.TableDetail[]) => {
-      set(() => ({ tableInfo: tableInfo }));
-    },
-    setSelectedTableKeys: (tableKeys: string[]) => {
-      set(() => ({ selectedTableKeys: tableKeys }));
-    },
-  })
-);
+export const useDatasourceStore = create<
+  Store.DatasourceState & Store.DatasourceAction
+>((set) => ({
+  datasource: [],
+  selectedDatasource: null,
+  tableInfo: [],
+  selectedTableKeys: [],
+  setDatasource: (datasource: Store.Datasource[]) => {
+    set(() => ({ datasource: datasource }));
+  },
+  setSelectedDatasource: (datasource: Store.Datasource) => {
+    set(() => ({ selectedDatasource: datasource }));
+  },
+  setTableInfo: (tableInfo: Store.TableDetail[]) => {
+    set(() => ({ tableInfo: tableInfo }));
+  },
+  setSelectedTableKeys: (tableKeys: string[]) => {
+    set(() => ({ selectedTableKeys: tableKeys }));
+  },
+}));
 
 export const useChatStore = create<Store.ChatState & Store.ChatAction>(
   (set) => ({
     chatData: [],
     curMsg: "",
+    chatHistory: [],
     setChatData: (chatData: Global.ChatItem[]) => {
       set(() => ({ chatData: chatData }));
     },
     setCurMsg: (curMsg: string) => {
       set(() => ({ curMsg: curMsg }));
     },
+    setChatHistory: (chatHistory: Store.ChatHistoryItem[]) => {
+      set(() => ({ chatHistory: chatHistory }));
+    },
   })
 );
-

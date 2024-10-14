@@ -1,15 +1,22 @@
 import React from "react";
-import { Input, Select } from "antd";
+import { Select } from "antd";
 
 import { useSettingStore } from "../../lib/store";
 
 export default function Common({ t }: { t: Global.Dictionary }) {
-  const { settings, saveOneSettingToLocal } = useSettingStore();
+  const { settings, setCurrentModelId } = useSettingStore();
 
-  const handleModelChange = (model: Store.Model) => {
-    saveOneSettingToLocal("currentDisplayModel", model.label);
-    saveOneSettingToLocal("currentModel", model.value);
+  const handleModelChange = (model: { label: string; value: string }) => {
+    setCurrentModelId(parseInt(model.value));
   };
+
+  const handleModelProviderChange = (provider: {
+    label: string;
+    value: string;
+  }) => {
+    console.log(provider);
+  };
+
   return (
     <>
       <div className="p-6">
@@ -19,13 +26,17 @@ export default function Common({ t }: { t: Global.Dictionary }) {
               模型类别
             </label>
             <Select
-              defaultValue={"OpenAI"}
+              defaultValue={settings.modelProviders[0].provider}
               optionFilterProp="label"
-              // onChange={(_, option) => handleModelChange(option as Store.Model)}
-              options={[
-                { label: "OpenAI", value: "OpenAI" },
-                { lable: "Claude", value: "Claude" },
-              ]}
+              onChange={(_, option) =>
+                handleModelProviderChange(
+                  option as { label: string; value: string }
+                )
+              }
+              options={settings.modelProviders.map((item) => ({
+                label: item.name,
+                value: item.provider,
+              }))}
               showSearch
               style={{ width: "50%" }}
             ></Select>
@@ -36,32 +47,22 @@ export default function Common({ t }: { t: Global.Dictionary }) {
               {t.setting.model}
             </label>
             <Select
-              defaultValue={settings.currentDisplayModel}
+              defaultValue={
+                settings.models.find(
+                  (item) => item.id === settings.currentModelId
+                )?.name
+              }
               optionFilterProp="label"
-              onChange={(_, option) => handleModelChange(option as Store.Model)}
-              options={settings.models}
+              onChange={(_, option) =>
+                handleModelChange(option as { label: string; value: string })
+              }
+              options={settings.models.map((item) => ({
+                label: item.name,
+                value: item.id.toString(),
+              }))}
               showSearch
               style={{ width: "50%" }}
             ></Select>
-          </div>
-
-          <div className="flex items-center">
-            <label className="w-1/2 text-sm font-medium text-gray-700">
-              {t.setting.custom_model}
-            </label>
-            <div className="w-1/2 flex items-center">
-              <Input
-                type="text"
-                value={settings.customerModels.join(",")}
-                onChange={(e) =>
-                  saveOneSettingToLocal(
-                    "customerModels",
-                    e.target.value.split(",").map((model) => model.trim())
-                  )
-                }
-                placeholder="model1,model2,model3"
-              />
-            </div>
           </div>
         </div>
       </div>

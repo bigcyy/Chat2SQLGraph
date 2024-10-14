@@ -43,3 +43,26 @@ export function throttle<T extends (...args: any[]) => any>(
     }
   };
 }
+
+export const all = async (arr: any[]) => {
+  return new Promise((resolve, reject) => {
+    let length = arr && arr.length;
+    let count = 0;
+    let result: any[] = [];
+    if (!arr || arr.length === 0) {
+      resolve(result);
+    }
+    arr.forEach(async (item, index) => {
+      try {
+        const res = await item;
+        result[index] = res;
+        count++;
+        if (count === length) {
+          resolve(result);
+        }
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
