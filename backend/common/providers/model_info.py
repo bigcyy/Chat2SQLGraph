@@ -1,4 +1,5 @@
 from typing import Type
+from abc import ABC, abstractmethod
 from common.providers.base_model import BaseModel
 
 
@@ -21,7 +22,7 @@ class ModelInfo:
         return {attr : getattr(self, attr) 
                 for attr in vars(self) if not attr.startswith("__") and not attr == 'class_name'}
 
-class ModelInfoManager:
+class ModelInfoManager(ABC):
     def __init__(self) -> None:
         self.model_list = []
     
@@ -36,9 +37,15 @@ class ModelInfoManager:
             if model.get_name() == name:
                 return model
             
+        return ModelInfo(name, "私有模型", self.get_private_model_adapter())
+    
+    @abstractmethod
+    def get_private_model_adapter(self) -> Type[BaseModel]:
+        pass
+
     class Builder:
-        def __init__(self) -> None:
-            self.model_info_manager = ModelInfoManager()
+        def __init__(self, model_info_manager_class:Type) -> None:
+            self.model_info_manager = model_info_manager_class()
         
         def add_model(self, model:ModelInfo):
             self.model_info_manager.add_model(model)
