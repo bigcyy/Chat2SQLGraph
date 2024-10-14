@@ -20,5 +20,5 @@ class OpenAIModelProvider(BaseModelProvider):
         return ModelProviderInfo(
             provider="openai_model_provider", 
             name="OpenAI", 
-            icon=os.path.join(BACKEND_PROJECT_DIR, "providers", "openai_model_provider","icon", "openai_icon_svg")
+            icon="https://github.com/bigcyy/Chat2SQLGraph/blob/main/backend/common/providers/openai_model_provider/icon/openai_icon_svg"
         )

@@ -443,7 +443,18 @@ class ModelSerializer(serializers.ModelSerializer):
         def delete_model(self):
             self.is_valid(raise_exception=True)
             Model.objects.filter(id=self.data.get("model_id"),created_by=self.data.get("user_id")).delete()
-    
+    class Test(serializers.Serializer):
+        user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("创建人"))
+        model_name = serializers.CharField(required=True,error_messages=ErrMessage.char("模型名称"),max_length=40,min_length=1)
+        api_key = serializers.CharField(required=True,error_messages=ErrMessage.char("api_key"),max_length=255,min_length=1)
+        base_url = serializers.CharField(required=False,error_messages=ErrMessage.char("base_url"),max_length=255,min_length=0)
+        
+        def test_model(self):
+            self.is_valid(raise_exception=True)
+            model_provider = ModelProviderConstants[self.data.get("provider")].value
+            model = model_provider.get_model(self.data.get("model_name"),self.data.get("api_key"),self.data.get("base_url"))
+            return model.test_invoke()
+
 class RemoteTableInfoSerializer(serializers.ModelSerializer):
     class Query(serializers.ModelSerializer):
         datasource_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("数据源 id"))

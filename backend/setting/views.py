@@ -51,6 +51,20 @@ class ModelView(APIView):
         serializer.delete_model()
         return result.success("ok")
 
+    class TestView(APIView):
+        authentication_classes = [JWTAuthentication]
+
+        @swagger_auto_schema(
+            method='POST',
+            operation_summary='测试模型是否可连接',
+            operation_description='成功返回ok\n',
+            request_body=ModelSerializer.Test
+        )
+        @action(methods=['POST'], detail=False)
+        def post(self, request):
+            serializer = ModelSerializer.Test(data={**request.data, 'user_id': request.user.id})
+            result = serializer.test_model()
+            return result.success(result)
 
 class ProviderView(APIView):
     authentication_classes = [JWTAuthentication]
