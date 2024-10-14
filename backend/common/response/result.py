@@ -23,14 +23,15 @@ class Result(JsonResponse):
         back_info_dict = {"code": code, "message": message, 'data': data}
         super().__init__(data=back_info_dict, status=response_status, **kwargs)
 
-def success(data, **kwargs):
+def success(data=None, message="成功", **kwargs):
     """
     获取一个成功的响应对象
-    :param data: 接口响应数据
+    :param data: 接口响应数据（可选）
+    :param message: 成功提示（默认为"成功"）
+    :param kwargs: 其他可选参数
     :return: 请求响应对象
     """
-    return Result(data=data, **kwargs)
-
+    return Result(data=data, message=message, **kwargs)
 
 def error(message):
     """

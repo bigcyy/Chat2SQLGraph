@@ -65,24 +65,16 @@ class BaseStep(ABC):
         pass
 
     def run(self, manager):
-        
+        manager.current_running_step = self
         # 参数校验
-        try:
-            self.validate_params(manager)
-        except Exception as e:
-            yield to_stream_chunk_response(manager.context['chat_id'], self.__class__.__name__, e.message, Status.ERROR)
-            return
+        self.validate_params(manager)
         
         # 执行 before 方法
         for response in self.run_before(manager):
             yield response
         
         # 执行当前步骤的逻辑
-        is_continue = True
-        try:
-            is_continue = self._run(manager)
-        except Exception as e:
-            is_continue = False
+        is_continue = self._run(manager)
         
         # 如果当前步骤的逻辑执行失败, 则执行 if_not_continue 方法
         if not is_continue:

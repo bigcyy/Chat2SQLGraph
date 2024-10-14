@@ -40,7 +40,7 @@ class ExecuteSqlStep(BaseStep):
         
     
     def if_not_continue(self, manager:PipelineManager):
-        yield to_stream_chunk_response(manager.context['chat_id'], self.__class__.__name__, "sql执行失败", Status.ERROR)
+        yield to_stream_chunk_response(manager.context['chat_id'], self.__class__.__name__, "SQL执行失败，请检查数据库是否可以连接。", Status.ERROR)
         
     def _run(self, manager:PipelineManager) -> bool:
 

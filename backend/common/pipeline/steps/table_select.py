@@ -17,7 +17,7 @@ class TableSelectStep(BaseStep):
 
     class ResponseSchema(BaseModel):
         table_ids: List[int] = Field(description="表的id")
-        reason: str = Field(description="选择这些表的理由")
+        reason: str = Field(description="选择这些表的理由, 如果 error 为 true, 给出友好的错误信息")
         error: bool = Field(description="是否为数据分析意图")
 
     class TableSelectStepSerializer(serializers.Serializer):
@@ -55,7 +55,7 @@ class TableSelectStep(BaseStep):
         
     
     def if_not_continue(self, manager:PipelineManager):
-        yield to_stream_chunk_response(manager.context['chat_id'], self.__class__.__name__, '我目前只支持数据分析。', Status.ERROR)
+        yield to_stream_chunk_response(manager.context['chat_id'], self.__class__.__name__, manager.context.get('error_reason'), Status.ERROR)
 
     def _run(self, manager:PipelineManager) -> bool:
         user_demand = self.context['user_demand']
@@ -72,6 +72,8 @@ class TableSelectStep(BaseStep):
         
         answer = agent.with_structured_output(self.ResponseSchema).invoke(prompt)
         if answer.error:
+            # 错误信息存入全局上下文
+            manager.context['error_reason'] = answer.reason
             return False
         # 存入局部上下文
         self.context["reason"] = answer.reason
@@ -94,9 +96,9 @@ class TableSelectStep(BaseStep):
 
     ## 任务
 
-    首先，你需要判断用户的意图是否为数据分析，若意图不是数据分析，则 error 字段为 true。若意图是数据分析，则 error 字段为 false，执行下一步。
+    首先，你需要判断用户的的意图是否为数据分析，若意图不是数据分析，则 error 字段为 true，在 reason 字段给出友好的错误信息。若意图是数据分析，则 error 字段为 false，执行下一步。
     
-    然后，你需要根据用户的需求和目前系统中已有的数据库表信息，综合分析要满足用户的需求需要使用哪些表，给出表的 id。并给出选择的理由。
+    然后，你需要根据用户的需求和目前系统中已有的数据库表信息，综合分析要满足用户的需求需要使用哪些表，给出表的 id。并在 reason 字段给出选择的理由。
 
     ## 用户的需求
 

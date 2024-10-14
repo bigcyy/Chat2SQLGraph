@@ -38,10 +38,19 @@ class DataToChartStep(BaseStep):
         prompt = ChatPromptTemplate.from_template(self.get_prompt())
         prompt = prompt.invoke({"user_demand":user_demand, "data":data})
         answer = manager.agent.invoke(prompt)
-        try:
-            json.loads(answer.content)
-        except Exception as e:
-            return False
+        # 添加重试逻辑，最多重试3次
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                json.loads(answer.content)
+                break  # 如果成功解析JSON，跳出循环
+            except json.JSONDecodeError as e:
+                if attempt < max_retries - 1:  # 如果不是最后一次尝试
+                    # 重新调用LLM生成答案
+                    answer = manager.agent.invoke(prompt)
+                else:
+                    # 所有尝试都失败，返回False
+                    return False
         
         # 将输出存入局部上下文
         self.context['chart_option'] = answer.content

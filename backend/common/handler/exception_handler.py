@@ -2,6 +2,7 @@ from rest_framework.views import exception_handler
 from rest_framework.exceptions import APIException, ValidationError, ErrorDetail
 from common.response import result
 from common.exceptions.exception import AppApiException
+from common.pipeline.response_util import to_stream_chunk_response, Status
 
 def validation_error_to_result(exc: ValidationError):
     """
@@ -52,3 +53,9 @@ def handle_exception(exc, context):
     if response is None:
         return result.error(str(exc))
     return response
+
+def handle_pipeline_exception(exc, chat_id, step_id):
+    exception_class = exc.__class__
+    if issubclass(exception_class, ValidationError):
+        return to_stream_chunk_response(chat_id, step_id, f"参数错误:{str(exc)}", Status.ERROR)
+    return to_stream_chunk_response(chat_id, step_id, f"系统错误:{str(exc)}", Status.ERROR)

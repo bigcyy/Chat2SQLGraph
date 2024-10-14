@@ -5,6 +5,7 @@ from . import views
 app_name = "setting"
 urlpatterns = [
     path('setting/provider', views.ProviderView.as_view(), name='provider'),
+    path('setting/model/test', views.ModelView.TestView.as_view(), name='model_test'),
     path('setting/<str:provider>/model_list', views.ProviderView.ModelListView.as_view(), name='model_list'),
     path('setting/model', views.ModelView.as_view(), name='model'),
     path('setting/datasource', views.DatasourceView.as_view(), name='datasource'),

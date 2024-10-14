@@ -15,7 +15,8 @@ class GenerateSqlStep(BaseStep):
 
     class ResponseSchema(BaseModel):
         sql: str = Field(description="sql语句，用于查询能够满足用户数据分析和可视化需求的数据，若可以生成sql则此字段必须输出")
-        think: str = Field(description="思考过程")
+        think: str = Field(description="思考过程,如果 error 为 true, 给出错误信息")
+        error: bool = Field(description="是否生成sql失败")
 
     class GenerateSqlStepSerializer(serializers.Serializer):
         user_demand = serializers.CharField(required=True,error_messages=ErrMessage.char("用户需求"))
@@ -59,7 +60,7 @@ class GenerateSqlStep(BaseStep):
         
     
     def if_not_continue(self, manager:PipelineManager):
-        yield to_stream_chunk_response(manager.context['chat_id'], self.__class__.__name__, '生成sql失败', Status.ERROR)
+        yield to_stream_chunk_response(manager.context['chat_id'], self.__class__.__name__, manager.context.get('error_reason'), Status.ERROR)
 
     def _run(self, manager:PipelineManager) -> bool:
         # 获取llm选择的表的ddl
@@ -74,10 +75,19 @@ class GenerateSqlStep(BaseStep):
         prompt = prompt.invoke({"user_demand":self.context['user_demand'], "ddl_string":ddl_string})
         agent = manager.agent
         answer = agent.with_structured_output(self.ResponseSchema).invoke(prompt)
+        if answer.error:
+            manager.context["error_reason"] = answer.think
+            return False
+        
+        # todo error为 false 但是sql为空
+        if answer.sql is None or answer.sql == "":
+            manager.context["error_reason"] = "生成sql失败"
+            return False
         
         # 存入局部上下文
         self.context["sql"] = answer.sql
         self.context["think"] = answer.think
+        
         # 将输出存入全局上下文
         manager.context.update(self.step_output_data())
         return True
@@ -92,6 +102,7 @@ class GenerateSqlStep(BaseStep):
 
     首先，判断提供的数据库表是否能够满足用户数据分析和可视化需求。
     若能满足，则分析用户的数据分析需求，查看数据可视化过程涉及的数据库表，编写sql语句。
+    若不能满足，则 error 字段为 true，在 think 字段给出友好的错误信息。
     请逐步进行思考，并将思考过程一起输出。
 
     ## 用户需求
@@ -106,5 +117,5 @@ class GenerateSqlStep(BaseStep):
     def step_output_data(self) -> dict:
         return {
             "sql": self.context.get("sql"),
-            "think": self.context.get("think")
+            "think": self.context.get("think"),
         }
