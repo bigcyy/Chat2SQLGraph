@@ -44,8 +44,8 @@ class ModelInfoManager(ABC):
         pass
 
     class Builder:
-        def __init__(self) -> None:
-            self.model_info_manager = ModelInfoManager()
+        def __init__(self, model_info_manager_class:Type) -> None:
+            self.model_info_manager = model_info_manager_class()
         
         def add_model(self, model:ModelInfo):
             self.model_info_manager.add_model(model)

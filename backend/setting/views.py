@@ -63,8 +63,11 @@ class ModelView(APIView):
         @action(methods=['POST'], detail=False)
         def post(self, request):
             serializer = ModelSerializer.Test(data={**request.data, 'user_id': request.user.id})
-            result = serializer.test_model()
-            return result.success(result)
+            is_ok = serializer.test_model()
+            if is_ok:
+                return result.success(message="模型连接成功")
+            else:
+                return result.error(message="模型连接失败")
 
 class ProviderView(APIView):
     authentication_classes = [JWTAuthentication]

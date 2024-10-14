@@ -445,6 +445,7 @@ class ModelSerializer(serializers.ModelSerializer):
             Model.objects.filter(id=self.data.get("model_id"),created_by=self.data.get("user_id")).delete()
     class Test(serializers.Serializer):
         user_id = serializers.IntegerField(required=True,error_messages=ErrMessage.char("创建人"))
+        provider = serializers.CharField(required=True,error_messages=ErrMessage.char("提供商"),max_length=50,min_length=1)
         model_name = serializers.CharField(required=True,error_messages=ErrMessage.char("模型名称"),max_length=40,min_length=1)
         api_key = serializers.CharField(required=True,error_messages=ErrMessage.char("api_key"),max_length=255,min_length=1)
         base_url = serializers.CharField(required=False,error_messages=ErrMessage.char("base_url"),max_length=255,min_length=0)
