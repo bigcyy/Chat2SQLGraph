@@ -5,8 +5,10 @@ from setting.models.datasource import Datasource
 from setting.models.model import Model
 from application.models import Application, ApplicationAccessToken
 from user.models import User
+from django.http import HttpRequest
 import hashlib
 import uuid
+from common.auth.jwt_utils import generate_jwt_token
 
 class ApplicationSerializer(serializers.Serializer):
     class Create(serializers.Serializer):
@@ -98,7 +100,29 @@ class ApplicationSerializer(serializers.Serializer):
             self.is_valid(raise_exception=True)
             application = Application.objects.filter(id=self.data.get('id'),creator=self.data.get('user_id')).first()
             return ApplicationSerializerModel(application).data
-        
+
+    class Authentication(serializers.Serializer):
+        access_token = serializers.CharField(required=True,error_messages=ErrMessage.char("应用 id"))
+        def is_valid(self, *, raise_exception=False):
+            super().is_valid(raise_exception=True)
+            application_access_token = ApplicationAccessToken.objects.filter(access_token=self.data.get('access_token')).first()
+            if not application_access_token:
+                raise ExceptionCodeConstants.APPLICATION_NOT_EXIST.value.to_app_api_exception()
+
+        def authentication(self,request:HttpRequest):
+            self.is_valid(raise_exception=True)
+            
+            application_access_token = ApplicationAccessToken.objects.filter(access_token=self.data.get('access_token')).first()
+            # 网站是否在白名单中
+            if application_access_token.white_active:
+                if request.META.get('HTTP_X_FORWARDED_FOR') in application_access_token.white_list:
+                    pass
+                else:
+                    raise ExceptionCodeConstants.APPLICATION_NOT_EXIST.value.to_app_api_exception()
+
+            # 创建 jwt token
+            return generate_jwt_token(application_access_token.application.id,{"type":"application"})
+                
 class ApplicationSerializerModel(serializers.ModelSerializer):
     class Meta:
         model = Application

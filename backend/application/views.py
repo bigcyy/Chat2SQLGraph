@@ -52,5 +52,15 @@ class ApplicationView(APIView):
         def get(self, request, application_id):
             serializer = ApplicationSerializer.Detail(data={'id': application_id, 'user_id': request.user.id})
             return result.success(serializer.detail())
-        
+    
+    class AthenticationView(APIView):
+        @swagger_auto_schema(
+            method='POST',
+            operation_summary='进行应用认证',
+            operation_description='成功返回 token\n',
+        )
+        @action(methods=['POST'], detail=False)
+        def post(self, request):
+            serializer = ApplicationSerializer.Authentication(data={'access_token': request.data.get('access_token')})
+            return result.success(serializer.authentication(request))
     
