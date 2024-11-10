@@ -19,6 +19,7 @@ rsa = "^4.9"
 drf-yasg = "^1.21.7"
 pyjwt = "^2.9.0"
 django-cors-headers = "^4.4.0"
+setuptools = "^75.3.0"
 
 
 
