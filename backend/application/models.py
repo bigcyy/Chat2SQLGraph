@@ -43,6 +43,7 @@ class ApplicationChatInfo(models.Model):
     """
 
     id = models.UUIDField(verbose_name="会话 id",max_length=32,primary_key=True,default=uuid.uuid1)
+    application = models.ForeignKey(Application, on_delete=models.CASCADE, verbose_name="聊天所属应用id")
     user_demand = models.TextField(verbose_name = "用户需求")
     chat_content = models.JSONField (verbose_name="会话内容",blank = True, null = True)
     sse_message_list = models.JSONField(verbose_name="sse 消息列表",blank = True, null = True)
