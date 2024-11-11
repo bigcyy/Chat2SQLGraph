@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from user.models import User
+from application.models import ApplicationAccessToken
 from django.db.models import QuerySet, Q
 from .jwt_utils import get_object_id_by_token
 
@@ -39,3 +40,16 @@ class UserTokenDetails(TokenDetails):
             "update_time": user.update_time,
         }
 
+class ApplicationTokenDetails(TokenDetails):
+    def load_token_details(self):
+        # todo: 从缓存中查询应用信息
+        # 从数据库中查询应用访问信息
+        object_id = get_object_id_by_token(self.token)
+        application_access_token = ApplicationAccessToken.objects.filter(access_token = object_id).first()
+        return application_access_token,{
+            "application_id": application_access_token.application.id,
+            "is_active": application_access_token.is_active,
+            "access_num": application_access_token.access_num,
+            "white_active": application_access_token.white_active,
+            "white_list": application_access_token.white_list,
+        }

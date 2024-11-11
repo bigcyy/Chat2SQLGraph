@@ -53,8 +53,6 @@ class ApplicationView(APIView):
         def get(self, request, application_id):
             serializer = ApplicationSerializer.ApplicationDetail(data={'id': application_id, 'user_id': request.user.id})
             return result.success(serializer.detail())
-        
-    
     class ChatView(APIView):
         authentication_classes = [JWTAuthentication]
         @swagger_auto_schema(
@@ -67,3 +65,14 @@ class ApplicationView(APIView):
         def post(self, request, application_id):
             serializer = ApplicationSerializer.ApplicationChat(data={**request.data, 'application_id': application_id})
             return serializer.chat();
+
+    class AthenticationView(APIView):
+        @swagger_auto_schema(
+            method='POST',
+            operation_summary='进行应用认证',
+            operation_description='成功返回 token\n',
+        )
+        @action(methods=['POST'], detail=False)
+        def post(self, request, application_id):
+            serializer = ApplicationSerializer.Authentication(data={'access_token': request.data.get('access_token'),'application_id': application_id})
+            return result.success(serializer.authentication(request))
