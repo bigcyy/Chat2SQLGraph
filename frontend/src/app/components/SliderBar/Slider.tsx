@@ -48,15 +48,6 @@ const playpen_Sans = Jacques_Francois({
   weight: ["400"],
 });
 
-const datasourceTestForm = {
-  datasource_name: "金融",
-  url: "127.0.0.1",
-  port: 4306,
-  username: "root",
-  password: "maybeyou",
-  database_name: "bigdata",
-};
-
 export default function Slider({ t }: Slider.SlideProps) {
   const path = usePathname();
   const router = useRouter();
@@ -187,9 +178,6 @@ export default function Slider({ t }: Slider.SlideProps) {
           if (data.code == 200) {
             setDatasource(data.data);
             setSelectedDatasource(data.data[0]);
-            if (process.env.NODE_ENV == "development") {
-              databaseForm.setFieldsValue(datasourceTestForm);
-            }
           } else {
             message.error(data.message);
           }
@@ -787,6 +775,7 @@ export default function Slider({ t }: Slider.SlideProps) {
         cancelText={t.confirm.no}
         closable={false}
         title="添加数据源"
+        width={300}
       >
         <Form
           form={databaseForm}
