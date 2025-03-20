@@ -4,7 +4,6 @@
 
 即将推出全新前端代码和在线体验。
 
-
 ### 主要功能：
 
 - **自然语言转 SQL 查询**：通过与系统的对话，生成复杂的 SQL 查询语句。
@@ -29,17 +28,20 @@
 #### 运行后端项目
 
 1. 创建虚拟环境
+
 ```bash
-python -m venv venv 
+python -m venv venv
 # py -m venv venv
 ```
 
 2. 激活环境
+
 ```bash
 .\venv\Scripts\activate
 ```
 
 3. 安装后端所需依赖
+
 ```bash
 poetry install
 ```
@@ -47,24 +49,42 @@ poetry install
 4. 修改配置文件 config.yaml 配置为自己的数据库信息
 
 5. 运行数据库迁移
+
 ```bash
 python backend/manage.py makemigrations
 ```
 
 6. 运行项目
+
 ```bash
 python main.py
 ```
 
+#### 运行前端项目
+
+1. 安装前端所需依赖
+
+```bash
+cd frontend
+# npm install -g pnpm
+pnpm install
+```
+
+2. 运行项目
+
+```bash
+pnpm dev
+```
+
+3. 访问 http://localhost:3000/
 
 ### 参与者
 
 以下是本项目的主要参与者（排名不分先后）：
 
-| github | 角色 | 
-|------|------|
-| [@bigcyy](https://github.com/bigcyy) | 后端开发 | 
-| [@夏安](https://github.com/1653756334) | 前端开发 | 
+| github                                 | 角色     |
+| -------------------------------------- | -------- |
+| [@bigcyy](https://github.com/bigcyy)   | 后端开发 |
+| [@夏安](https://github.com/1653756334) | 前端开发 |
 
 **Chat2SQLGraph** ,欢迎贡献和反馈！
-
