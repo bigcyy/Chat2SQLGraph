@@ -26,7 +26,7 @@ export default function Common({ t }: { t: Global.Dictionary }) {
               模型类别
             </label>
             <Select
-              defaultValue={settings.modelProviders[0].provider}
+              defaultValue={settings.modelProviders[0]?.provider && ''}
               optionFilterProp="label"
               onChange={(_, option) =>
                 handleModelProviderChange(
