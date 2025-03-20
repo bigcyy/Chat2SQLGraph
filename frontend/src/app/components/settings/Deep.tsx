@@ -98,8 +98,8 @@ export default function Deep({ t }: { t: Global.Dictionary }) {
             form={addModelForm}
             className="space-y-4"
             initialValues={{
-              provider: settings.modelProviders[0].provider,
-              model_name: settings.models[0].model_name,
+              provider: settings.modelProviders[0]?.provider,
+              model_name: settings.models[0]?.model_name,
             }}
             onFinish={handleAddModel}
           >
